@@ -20,6 +20,9 @@ _bmad-output/
 # Assets
 assets/
 
+# Tailwind entry (prettier mangles @tailwind directives)
+global.css
+
 # Misc
 pnpm-lock.yaml
 *.tsbuildinfo
