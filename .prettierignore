@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+web-build/
+.expo/
+
+# Generated native folders
+/ios
+/android
+
+# AI / agent tooling
+_bmad/
+_bmad-output/
+.agents/
+.claude/
+.codex/
+
+# Assets
+assets/
+
+# Misc
+pnpm-lock.yaml
+*.tsbuildinfo
