@@ -52,7 +52,7 @@ This is a medium-complexity cross-platform client with real-time-ish UX and back
 - Mandatory stack direction from PRD: React Native + Expo + TanStack Query.
 - External API dependency: DigiTransit GraphQL availability and schema stability.
 - Platform-specific dependency risk: map implementation divergence on web vs native.
-- Background execution constraints: iOS background fetch reliability can limit notification timing guarantees.
+- Notification scheduling constraint: departure notifications are scheduled against the DigiTransit API's scheduled time at scheduling moment, not live-updated. Cancelled or delayed services will not update a scheduled notification.
 - No backend allowed in MVP scope; all notification logic remains client-side/local.
 - App-store compliance concerns deferred for current phase, but permission text/flows still affect implementation quality.
 
@@ -138,7 +138,7 @@ npx create-expo-app@latest DigiTransit-v2 --template default
 - No backend DB/auth in MVP; all persistence is local-only.
 - GraphQL integration is Codegen-first typed documents + TanStack Query orchestration.
 - Shared map abstraction with split implementation: native (`react-native-maps`) vs web (`mapbox-gl`).
-- Background notification behavior is best-effort on iOS and non-blocking for MVP.
+- Notification behavior is on-demand only: (1) home stop query fires on app launch, (2) per-departure notifications scheduled via `expo-notifications` at user request. No background fetch or task manager required.
 
 **Important Decisions (Shape Architecture):**
 - Settings/home-stop persistence with AsyncStorage.
@@ -232,7 +232,7 @@ npx create-expo-app@latest DigiTransit-v2 --template default
 - Query key conventions affect map/stops/departures synchronization.
 - Settings store impacts polling behavior globally.
 - Map adapter contract affects marker rendering and navigation handoff to departures.
-- Notification logic depends on settings + home stop + departures query behavior.
+- Notification logic depends on settings + home stop + departures query: (1) on-launch home stop query uses same GraphQL op as departures; (2) per-departure scheduler receives departure time from departures query result.
 
 ## Implementation Patterns & Consistency Rules
 
@@ -422,7 +422,7 @@ DigiTransit-v2/
 │   │   │   └── notifications/
 │   │   │       ├── notifications.native.ts
 │   │   │       ├── notifications.web.ts
-│   │   │       └── scheduler.ts
+│   │   │       └── scheduler.ts   ← scheduleAt(date, content), cancel(id), fireNow(content)
 │   │   ├── store/
 │   │   │   ├── settings.store.ts
 │   │   │   ├── ui.store.ts
@@ -468,9 +468,10 @@ DigiTransit-v2/
 │   │   │   └── settings-screen.tsx
 │   │   └── notifications/
 │   │       ├── hooks/
-│   │       │   └── use-home-stop-notifications.ts
-│   │       ├── services/
-│   │       │   └── check-next-departure.ts
+│   │       │   ├── use-home-stop-launch-notification.ts
+│   │       │   └── use-departure-notification.ts
+│   │       ├── components/
+│   │       │   └── departure-notification-dialog.tsx
 │   │       └── notifications-settings.tsx
 │   ├── generated/
 │   │   ├── graphql.ts
@@ -552,7 +553,7 @@ DigiTransit-v2/
 **External Integrations:**
 - DigiTransit GraphQL via `graphql-request`.
 - Native maps via `react-native-maps`; web map via `mapbox-gl`.
-- Local notifications via Expo notifications/task APIs (native only meaningful in MVP).
+- Local notifications via `expo-notifications` only (no `expo-task-manager` / background fetch). Two patterns: on-launch home stop query → immediate notification; user long-press on departure card → scheduled notification at departure time − lead time.
 
 **Data Flow:**
 1. UI triggers feature hook.
