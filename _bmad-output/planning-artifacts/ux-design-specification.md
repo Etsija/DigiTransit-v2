@@ -471,6 +471,35 @@ flowchart TD
     F --> G([Zero learning curve])
 ```
 
+### Journey 4: Home Stop — On-Launch Notification
+
+```mermaid
+flowchart TD
+    A([App launch\nHome stop configured\nNotifications enabled]) --> B[App opens · Map tab loads]
+    B --> C[App queries home stop next departure]
+    C --> D{Query success?}
+    D -- Yes --> E[Local notification fires immediately\n'Next route X from Stop Y at HH:MM — in Z min']
+    D -- No/API error --> F[Notification skipped silently\nMap loads normally]
+    E --> G[User reads notification\nfrom lock screen or notification drawer]
+    G --> H([User knows next home stop departure\nwithout any navigation])
+```
+
+### Journey 5: Departure Alarm — Per-Departure Scheduling
+
+```mermaid
+flowchart TD
+    A([Departures view open\nUser wants a reminder]) --> B[User long-presses a departure card]
+    B --> C{Already scheduled?}
+    C -- No --> D['Notify me before this departure?'\n5 min · 10 min · 15 min · Cancel]
+    C -- Yes --> E['Cancel notification for this departure?'\nCancel · Keep]
+    D --> F[User selects lead time]
+    F --> G[Local notification scheduled\nat departure time minus lead time]
+    G --> H[DepartureCard shows notification badge]
+    H --> I([User continues browsing\nor closes app])
+    G --> J([At scheduled time\nnotification fires:\n'Route X to Headsign departs in N min\nfrom Stop Name'])
+    E --> K[User cancels → notification removed\nDepartureCard badge clears]
+```
+
 ### Sub-case A: API Unavailable
 
 ```mermaid
@@ -502,6 +531,8 @@ flowchart TD
 - **Error states always show what's available** — map remains, missing data explained
 - **Auto-recovery** — TanStack Query retries and GPS acquisition retry silently
 - **Every journey: ≤2 taps from launch to departure times**
+- **Home stop notification fires on every launch** — no user action required; fires as soon as app opens and API responds
+- **Long-press departure = notification intent** — consistent gesture for notification scheduling across all departure views
 
 ---
 
@@ -524,7 +555,8 @@ All components are custom — no third-party UI library. Built on `expo-blur` + 
 | `CoordinatesBar` | Glassy HUD strip pinned to top — GPS coordinates + resolved address | normal, location-unavailable |
 | `GlassCard` | Base primitive — BlurView + gradient surface + glass border | default, pressed |
 | `StopCard` | GlassCard + stop data + C+D transport tint/icon badge | default, pressed, home-pinned |
-| `DepartureCard` | GlassCard + departure row + realtime/estimated border treatment | realtime (green border), estimated (amber border) |
+| `DepartureCard` | GlassCard + departure row + realtime/estimated border treatment + long-press to schedule notification | realtime (green border), estimated (amber border), notification-scheduled (clock badge) |
+| `DepartureNotificationDialog` | Bottom sheet dialog triggered by long-press on DepartureCard — lead time selection | idle, confirming, already-scheduled (cancel mode) |
 | `StopHeaderCard` | Larger StopCard variant for Departures view — stop detail + patterns via stop | same C+D transport tinting as StopCard |
 | `GlassTabBar` | Frosted glass bottom navigation bar — 4 tabs | tab active, tab inactive |
 | `MapMarker` | Circular stop marker — transport colour fill, size proportional to proximity | normal, tapped, home-pinned |
@@ -572,6 +604,8 @@ Map tab → Stops tab → Departures view → Settings tab → Push notification
 | API error | `ErrorBanner` slides in below CoordinatesBar — calm factual text, auto-hides on recovery |
 | GPS unavailable | CoordinatesBar shows `Location unavailable` — no alarm, no blocking |
 | Home stop pinned | Subtle home icon badge on StopCard |
+| Departure notification scheduled | Small clock badge on DepartureCard |
+| Home stop notification fires on launch | System notification: route, time, minutes-until — no in-app UI required |
 
 ### Empty States
 
@@ -590,6 +624,14 @@ Always explain why + what to do. Never just "nothing here":
 ### Home Stop Pin
 
 Long-press on StopCard in Stops list → pin affordance appears → tap to confirm. One home stop at a time — setting a new one replaces the previous without a confirmation dialog.
+
+When a home stop is set and push notifications are enabled, the app queries that stop's next departure on every app launch and fires an immediate local notification. This fires regardless of the user's current GPS location.
+
+### Departure Notification Scheduling
+
+Long-press on any DepartureCard opens the `DepartureNotificationDialog`. The dialog offers lead time options (5 / 10 / 15 min, pre-selecting the value from Settings). On confirm, the departure card displays a small clock badge indicating a notification is scheduled. Long-pressing the same card again shows the cancel option.
+
+The dialog is a bottom sheet — it does not navigate away from the Departures view. Dismissing the dialog without confirming is a no-op.
 
 ## Responsive Design & Accessibility
 
