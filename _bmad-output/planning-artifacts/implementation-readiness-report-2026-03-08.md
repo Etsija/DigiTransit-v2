@@ -251,6 +251,7 @@ The UX document is comprehensive — it covers visual design system, component s
 - **Architecture confirms** push navigation (Departures as a routed screen, not a tab).
 - **Impact:** Implementation confusion risk if a developer reads the PRD summary but not the UX.
 - **Resolution:** The UX and architecture take precedence. Departures = push route; tabs = Map, Stops, Settings only (3 tabs).
+- **Story-level implication:** Story 1.4 should explicitly require a 3-tab `GlassTabBar` with icon + label treatment and native safe-area handling so the upgraded tab bar does not regress navigation structure or overlap system navigation UI.
 
 #### 2. NativeWind (architecture) vs. StyleSheet (UX) — Potential per-story confusion ⚠️
 
@@ -429,4 +430,3 @@ This assessment reviewed 4 planning artifacts totaling ~149 KB of documentation 
 **Assessor:** Claude (Implementation Readiness Workflow)
 **Date:** 2026-03-08
 **Report file:** `_bmad-output/planning-artifacts/implementation-readiness-report-2026-03-08.md`
-
