@@ -1,0 +1,33 @@
+# Finland GTFS schema keeps zoneId and vehicleType on Stop; pattern name is sourced via route.
+query StopsNearbyQuery($lat: Float!, $lon: Float!, $radius: Int!) {
+  stopsByRadius(lat: $lat, lon: $lon, radius: $radius) {
+    edges {
+      node {
+        distance
+        stop {
+          gtfsId
+          name
+          code
+          zoneId
+          vehicleType
+          parentStation {
+            name
+          }
+          patterns {
+            directionId
+            route {
+              shortName
+              longName
+              mode
+            }
+            stops {
+              gtfsId
+              code
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+}

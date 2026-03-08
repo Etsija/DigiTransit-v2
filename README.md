@@ -7,13 +7,29 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 1. Install dependencies
 
    ```bash
-   npm install
+   pnpm install
    ```
 
-2. Start the app
+2. Configure DigiTransit API access
 
    ```bash
-   npx expo start
+   cp .env.example .env
+   ```
+
+   Then set `EXPO_PUBLIC_DIGITRANSIT_API_KEY` in `.env`.
+   Register for an API key at `https://portal-api.digitransit.fi`.
+   You can optionally override the GraphQL endpoint with `EXPO_PUBLIC_DIGITRANSIT_API_URL`.
+
+3. Start the app
+
+   ```bash
+   pnpm start
+   ```
+
+4. Regenerate GraphQL types after editing any `.graphql` document
+
+   ```bash
+   pnpm codegen
    ```
 
 In the output, you'll find options to open the app in a
@@ -30,7 +46,7 @@ You can start developing by editing the files inside the **app** directory. This
 When you're ready, run:
 
 ```bash
-npm run reset-project
+pnpm reset-project
 ```
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.

@@ -1,0 +1,19 @@
+# Finland GTFS schema keeps stoptimesWithoutPatterns on Stop.
+query StopDeparturesQuery($id: String!) {
+  stop(id: $id) {
+    name
+    stoptimesWithoutPatterns {
+      scheduledDeparture
+      realtimeDeparture
+      realtime
+      realtimeState
+      serviceDay
+      headsign
+      trip {
+        route {
+          shortName
+        }
+      }
+    }
+  }
+}

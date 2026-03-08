@@ -31,3 +31,12 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test:ci
+
+      # Requires repository secret DIGITRANSIT_API_KEY for schema introspection.
+      - name: Codegen check
+        run: pnpm codegen:check
+        env:
+          EXPO_PUBLIC_DIGITRANSIT_API_KEY: ${{ secrets.DIGITRANSIT_API_KEY }}
