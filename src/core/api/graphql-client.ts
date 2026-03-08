@@ -17,7 +17,9 @@ export async function requestGraphql<TResult, TVariables extends Variables = Var
   try {
     const requestArgs = variables ? [document, variables] : [document];
 
-    return await (graphqlClient.request as (...args: unknown[]) => Promise<TResult>)(...requestArgs);
+    return await (graphqlClient.request as (...args: unknown[]) => Promise<TResult>)(
+      ...requestArgs
+    );
   } catch (error) {
     throw mapToAppError(error) satisfies AppError;
   }

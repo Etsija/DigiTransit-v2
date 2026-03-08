@@ -1,6 +1,7 @@
-import type { CodegenConfig } from '@graphql-codegen/cli';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+import type { CodegenConfig } from '@graphql-codegen/cli';
 
 type ProcessLike = {
   env?: Record<string, string | undefined>;

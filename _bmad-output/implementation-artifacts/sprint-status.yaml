@@ -42,7 +42,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
   1-1-graphql-codegen-pipeline-and-core-api-infrastructure: done
-  1-2-settings-store-and-app-configuration-foundation: backlog
+  1-2-settings-store-and-app-configuration-foundation: done
   1-3-app-navigation-shell-and-route-architecture: backlog
   1-4-design-system-tokens-and-component-library: backlog
   1-5-dev-showcase-screen: backlog
