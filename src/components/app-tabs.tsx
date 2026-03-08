@@ -1,34 +1,82 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
+import { isPrimaryTabPath, TAB_ROUTES } from '@/types/navigation';
+import { ThemedText } from './themed-text';
+import { ThemedView } from './themed-view';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const showTabBar = isPrimaryTabPath(pathname);
 
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}
-    >
-      <NativeTabs.Trigger name='index'>
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode='template'
-        />
-      </NativeTabs.Trigger>
+    <View style={styles.container}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name='index' />
+        <Stack.Screen name='map' />
+        <Stack.Screen name='stops' />
+        <Stack.Screen name='settings' />
+        <Stack.Screen name='stop/[stopId]' />
+      </Stack>
 
-      <NativeTabs.Trigger name='explore'>
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode='template'
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+      {showTabBar ? (
+        <ThemedView type='backgroundElement' style={styles.tabBar}>
+          {TAB_ROUTES.map((route) => {
+            const isActive = pathname === route.href;
+
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityRole='button'
+                onPress={() => router.replace(route.href)}
+                style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+              >
+                <ThemedView
+                  type={isActive ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.buttonInner}
+                >
+                  <ThemedText type='smallBold' themeColor={isActive ? 'text' : 'textSecondary'}>
+                    {route.label}
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
+            );
+          })}
+        </ThemedView>
+      ) : null}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  tabBar: {
+    position: 'absolute',
+    left: Spacing.three,
+    right: Spacing.three,
+    bottom: Spacing.three,
+    borderRadius: Spacing.four,
+    padding: Spacing.two,
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  button: {
+    flex: 1,
+  },
+  buttonInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.three,
+    minHeight: BottomTabInset,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+});

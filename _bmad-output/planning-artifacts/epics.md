@@ -146,6 +146,7 @@ NFR16: The DigiTransit API base URL must be centralised in a single config locat
 **From UX Design Specification:**
 
 - Custom design system built on `expo-blur` (BlurView) + React Native StyleSheet + `theme.ts` design token file — no third-party UI component library
+- Iconography standard: use the already-included `@expo/vector-icons` package as the sole icon dependency; prefer `Ionicons` for navigation/system icons and `MaterialCommunityIcons` for transport-mode glyphs exposed through a shared icon wrapper
 - Glassmorphism aesthetic: frosted glass cards (backdrop blur + semi-transparent dark surface) floating over dark map; glass aesthetic must not be broken by opaque elements
 - Transport-type colour tokens (bus `#3B82F6`, tram `#22C55E`, train `#A855F7`, metro `#F97316`, ferry `#06B6D4`) applied consistently across map markers and stop/departure cards
 - C+D hybrid card design: surface tint gradient (transport colour at ~11% opacity) as card background + small coloured icon badge (22x22px) in top-left of card body; stop code badge top-right
@@ -400,6 +401,24 @@ So that all feature screens can be built with a consistent glassmorphism visual 
 **When** their tap target is measured
 **Then** each is at minimum 44×44pt (NFR13)
 
+**Given** the `GlassTabBar` on iOS and Android
+**When** it is rendered at the bottom of the screen
+**Then** it respects platform safe-area insets and system navigation areas
+**And** it does not overlap Android system navigation controls or the iOS home indicator
+**And** the visible bar height follows the UX token target (`layout.tabBarHeight = 64px`) before safe-area padding is added
+
+**Given** the primary app navigation tabs
+**When** `GlassTabBar` is rendered
+**Then** it shows exactly three visible destinations: Map, Stops, Settings
+**And** each tab uses icon-first presentation with a visible text label for clarity and accessibility
+**And** Departures remains a push route, not a tab item
+
+**Given** any component requires iconography
+**When** an icon is rendered for navigation, status, or transport type
+**Then** it uses the shared icon wrapper built on `@expo/vector-icons`
+**And** no component imports `Ionicons`, `MaterialCommunityIcons`, or another icon package directly
+**And** the tab bar, transport icon badges, and state icons all follow this same centralized icon contract
+
 **Given** any text element
 **When** the device system font scale is increased
 **Then** text scales correctly with no clipping or overflow (NFR12)
@@ -409,8 +428,11 @@ So that all feature screens can be built with a consistent glassmorphism visual 
 **Technical notes:**
 - All tokens sourced from UX Design Specification: transport colours, card surface tokens, typography scale, spacing, border radius, layout constants, status colours
 - Design tokens live in a **single file** `src/shared/theme/theme.ts` — not split into separate colors/spacing/typography files. All components import from this one file.
+- Iconography lives behind `src/shared/icons/`; use `Ionicons` for app-shell/system icons and `MaterialCommunityIcons` for transport-mode glyphs, all provided via local wrapper components
 - `CoordinatesBar`: 44px height, 12px border-radius, capable of displaying coordinate text and a `Location unavailable` state
 - `GlassTabBar` replaces/upgrades the existing `app-tabs.tsx` scaffold component
+- `GlassTabBar` must consume native safe-area insets so the interactive surface sits above Android navigation buttons / gesture areas and the iOS home indicator
+- `GlassTabBar` must implement the Story 1.3 navigation structure exactly: 3 tabs only (`Map`, `Stops`, `Settings`) with icon + label treatment; `Departures` is never rendered as a tab
 
 ---
 

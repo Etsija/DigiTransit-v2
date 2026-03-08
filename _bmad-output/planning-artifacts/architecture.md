@@ -200,6 +200,11 @@ npx create-expo-app@latest DigiTransit-v2 --template default
   - Server state: TanStack Query only.
   - Client UI/preferences state: Zustand store (persist middleware) for settings/home-stop/UI flags.
 - Routing strategy: Expo Router with typed route params for stop/departure flows.
+- Iconography strategy:
+  - Use `@expo/vector-icons` as the sole app icon dependency; do not add `lucide-react-native` or another icon package unless a later ADR explicitly changes this.
+  - Use `Ionicons` for app shell, navigation, and generic status/action icons.
+  - Use `MaterialCommunityIcons` only where transport-specific glyph coverage is needed (bus, tram, train, metro/subway, ferry/boat).
+  - Re-export app icons through `src/shared/icons/` so screens/components do not import icon families directly.
 - Performance strategy:
   - Memoized marker/list transforms
   - query `select` for derived data
@@ -481,6 +486,10 @@ DigiTransit-v2/
 │   │   │   ├── loading-state.tsx
 │   │   │   ├── error-banner.tsx
 │   │   │   └── empty-state.tsx
+│   │   ├── icons/
+│   │   │   ├── app-icon.tsx
+│   │   │   ├── transport-icon.tsx
+│   │   │   └── index.ts
 │   │   └── theme/
 │   │       └── theme.ts
 │   └── types/

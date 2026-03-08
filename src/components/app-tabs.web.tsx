@@ -1,39 +1,52 @@
-import {
-  TabList,
-  TabListProps,
-  Tabs,
-  TabSlot,
-  TabTrigger,
-  TabTriggerSlotProps,
-} from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
-import { ExternalLink } from './external-link';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { isPrimaryTabPath, TAB_ROUTES } from '@/types/navigation';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 export default function AppTabs() {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const showTabBar = isPrimaryTabPath(pathname);
+
   return (
-    <Tabs>
-      <TabSlot style={{ height: '100%' }} />
-      <TabList asChild>
+    <View style={styles.container}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name='index' />
+        <Stack.Screen name='map' />
+        <Stack.Screen name='stops' />
+        <Stack.Screen name='settings' />
+        <Stack.Screen name='stop/[stopId]' />
+      </Stack>
+
+      {showTabBar ? (
         <CustomTabList>
-          <TabTrigger name='home' href='/' asChild>
-            <TabButton>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name='explore' href='/explore' asChild>
-            <TabButton>Explore</TabButton>
-          </TabTrigger>
+          {TAB_ROUTES.map((route) => (
+            <TabButton
+              key={route.key}
+              accessibilityRole='button'
+              isFocused={pathname === route.href}
+              onPress={() => router.replace(route.href)}
+            >
+              {route.label}
+            </TabButton>
+          ))}
         </CustomTabList>
-      </TabList>
-    </Tabs>
+      ) : null}
+    </View>
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+type TabButtonProps = Omit<React.ComponentProps<typeof Pressable>, 'children'> & {
+  children: React.ReactNode;
+  isFocused?: boolean;
+};
+
+export function TabButton({ children, isFocused, ...props }: TabButtonProps) {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
@@ -48,35 +61,28 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   );
 }
 
-export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+type CustomTabListProps = {
+  children: React.ReactNode;
+};
 
+export function CustomTabList(props: CustomTabListProps) {
   return (
-    <View {...props} style={styles.tabListContainer}>
+    <View style={styles.tabListContainer}>
       <ThemedView type='backgroundElement' style={styles.innerContainer}>
         <ThemedText type='smallBold' style={styles.brandText}>
-          Expo Starter
+          DigiTransit
         </ThemedText>
 
         {props.children}
-
-        <ExternalLink href='https://docs.expo.dev' asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type='link'>Doc</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
       </ThemedView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   tabListContainer: {
     position: 'absolute',
     width: '100%',
@@ -105,12 +111,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
-  },
-  externalPressable: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
   },
 });
