@@ -482,9 +482,7 @@ DigiTransit-v2/
 │   │   │   ├── error-banner.tsx
 │   │   │   └── empty-state.tsx
 │   │   └── theme/
-│   │       ├── colors.ts
-│   │       ├── spacing.ts
-│   │       └── typography.ts
+│   │       └── theme.ts
 │   └── types/
 │       └── navigation.ts
 ├── scripts/
