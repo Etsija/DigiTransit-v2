@@ -14,6 +14,46 @@ import AppTabs from '@/components/app-tabs';
 import AppTabsWeb from '@/components/app-tabs.web';
 import { buildSettingsHref, buildShowcaseHref, buildStopHref } from '@/types/navigation';
 
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: jest.fn(() => true),
+}));
+
+jest.mock('react-native-maps', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const MockMapView = React.forwardRef((props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      animateToRegion: jest.fn(),
+    }));
+
+    return <View ref={ref} {...props} />;
+  });
+  MockMapView.displayName = 'MapView';
+
+  return {
+    __esModule: true,
+    default: MockMapView,
+  };
+});
+
+jest.mock('@/features/map/hooks/use-device-location', () => ({
+  useDeviceLocation: jest.fn(() => ({
+    coordinates: { latitude: 60.1699, longitude: 24.9384 },
+    permission: { status: 'granted', canAskAgain: true },
+    isFixed: true,
+    isLoading: false,
+    error: null,
+  })),
+}));
+
+jest.mock('@/core/store/settings.store', () => ({
+  useSettingsStore: jest.fn(
+    (selector: (state: { locationUpdateIntervalSeconds: number }) => number) =>
+      selector({ locationUpdateIntervalSeconds: 20 })
+  ),
+}));
+
 jest.mock('expo-constants', () => ({
   __esModule: true,
   default: {
@@ -101,11 +141,10 @@ describe('navigation route stubs', () => {
     });
   });
 
-  it('renders the map stub screen', () => {
+  it('renders the map route entry point', () => {
     const { getByText } = render(<MapScreen />);
 
-    expect(getByText('Map')).toBeTruthy();
-    expect(getByText('Map screen stub')).toBeTruthy();
+    expect(getByText('Current location')).toBeTruthy();
   });
 
   it('redirects the root index route to the map screen', () => {

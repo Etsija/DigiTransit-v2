@@ -49,8 +49,8 @@ development_status:
   1-6-live-api-query-validation-dev-tool: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-gps-location-acquisition-and-permission-flow: backlog
+  epic-2: in-progress
+  2-1-gps-location-acquisition-and-permission-flow: done
   2-2-map-view-with-dark-tile-style: backlog
   2-3-nearby-stop-markers-on-map: backlog
   2-4-nearby-stops-list: backlog
