@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppIcon } from '@/shared/icons';
 import { StatusType, theme } from '@/shared/theme/theme';
 
 export type DepartureCardProps = {
@@ -8,6 +9,7 @@ export type DepartureCardProps = {
   headsign: string;
   departureTime: string;
   status: StatusType;
+  notificationScheduled?: boolean;
   onPress?: () => void;
 };
 
@@ -16,6 +18,7 @@ export function DepartureCard({
   headsign,
   departureTime,
   status,
+  notificationScheduled = false,
   onPress,
 }: DepartureCardProps) {
   const isRealtime = status === 'realtime';
@@ -28,15 +31,25 @@ export function DepartureCard({
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.headsignText}>
-          {headsign}
-        </Text>
+        <Text style={styles.headsignText}>{headsign}</Text>
         <Text style={[styles.statusLabel, { color: borderColor }]}>
           {isRealtime ? '● Live GPS' : '~ Scheduled'}
         </Text>
       </View>
 
-      <Text style={[styles.timeText, isRealtime && styles.timeTextBold]}>{departureTime}</Text>
+      <View style={styles.timeContainer}>
+        {notificationScheduled ? (
+          <View
+            accessibilityLabel='Notification scheduled'
+            accessibilityRole='image'
+            style={styles.notificationBadge}
+          >
+            <AppIcon name='time-outline' size={12} color={theme.colors.status.estimated} />
+          </View>
+        ) : null}
+
+        <Text style={[styles.timeText, isRealtime && styles.timeTextBold]}>{departureTime}</Text>
+      </View>
     </View>
   );
 
@@ -96,6 +109,21 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: theme.typography.xs.fontSize,
     fontWeight: theme.typography.xs.fontWeight,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  notificationBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: `${theme.colors.status.estimated}44`,
+    backgroundColor: `${theme.colors.status.estimated}18`,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   timeText: {
     color: theme.colors.text.primary,

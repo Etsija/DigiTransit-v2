@@ -7,11 +7,21 @@ import React from 'react';
 import IndexRoute from '@/app/index';
 import MapScreen from '@/app/map';
 import SettingsScreen from '@/app/settings';
+import ShowcaseRoute from '@/app/showcase';
 import StopDetailsScreen from '@/app/stop/[stopId]';
 import StopsScreen from '@/app/stops';
 import AppTabs from '@/components/app-tabs';
 import AppTabsWeb from '@/components/app-tabs.web';
-import { buildStopHref } from '@/types/navigation';
+import { buildSettingsHref, buildShowcaseHref, buildStopHref } from '@/types/navigation';
+
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: {
+    expoConfig: {
+      version: '1.0.0',
+    },
+  },
+}));
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
@@ -55,13 +65,22 @@ jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
 
+const devGlobal = globalThis as typeof globalThis & { __DEV__: boolean };
+
 describe('navigation route stubs', () => {
   const mockRedirect = jest.mocked(Redirect);
   const mockUseLocalSearchParams = jest.mocked(useLocalSearchParams);
   const mockUsePathname = jest.mocked(usePathname);
   const mockUseRouter = jest.mocked(useRouter);
+  const originalDev = devGlobal.__DEV__;
 
   beforeEach(() => {
+    Object.defineProperty(devGlobal, '__DEV__', {
+      configurable: true,
+      value: true,
+      writable: true,
+    });
+
     mockUsePathname.mockReturnValue('/map');
     mockUseRouter.mockReturnValue({
       back: jest.fn(),
@@ -72,6 +91,14 @@ describe('navigation route stubs', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    Object.defineProperty(devGlobal, '__DEV__', {
+      configurable: true,
+      value: originalDev,
+      writable: true,
+    });
   });
 
   it('renders the map stub screen', () => {
@@ -113,11 +140,56 @@ describe('navigation route stubs', () => {
     expect(getByText('Stops screen stub')).toBeTruthy();
   });
 
-  it('renders the settings stub screen', () => {
+  it('renders the settings screen with the current app version', () => {
     const { getByText } = render(<SettingsScreen />);
 
     expect(getByText('Settings')).toBeTruthy();
-    expect(getByText('Settings screen stub')).toBeTruthy();
+    expect(
+      getByText('Developer tooling stays hidden behind the app version in development builds.')
+    ).toBeTruthy();
+    expect(getByText('Version 1.0.0')).toBeTruthy();
+  });
+
+  it('opens the showcase route after five version taps in development mode', () => {
+    const push = jest.fn();
+
+    mockUseRouter.mockReturnValue({
+      back: jest.fn(),
+      replace: jest.fn(),
+      push,
+    } as unknown as ReturnType<typeof useRouter>);
+
+    const { getByRole } = render(<SettingsScreen />);
+    const versionButton = getByRole('button', { name: 'App version 1.0.0' });
+
+    for (let tap = 0; tap < 5; tap += 1) {
+      fireEvent.press(versionButton);
+    }
+
+    expect(push).toHaveBeenCalledWith(buildShowcaseHref());
+  });
+
+  it('does nothing after five version taps in production mode', () => {
+    const push = jest.fn();
+
+    Object.defineProperty(devGlobal, '__DEV__', {
+      configurable: true,
+      value: false,
+      writable: true,
+    });
+
+    mockUseRouter.mockReturnValue({
+      back: jest.fn(),
+      replace: jest.fn(),
+      push,
+    } as unknown as ReturnType<typeof useRouter>);
+
+    const { getByLabelText, queryByRole } = render(<SettingsScreen />);
+
+    expect(queryByRole('button', { name: 'App version 1.0.0' })).toBeNull();
+    expect(getByLabelText('App version 1.0.0')).toBeTruthy();
+
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('renders the web tab shell with the three primary tabs only', () => {
@@ -127,6 +199,7 @@ describe('navigation route stubs', () => {
     expect(getByText('Stops')).toBeTruthy();
     expect(getByText('Settings')).toBeTruthy();
     expect(queryByText('Departures')).toBeNull();
+    expect(queryByText('Showcase')).toBeNull();
   });
 
   it('hides the web tab bar on the departures push route', () => {
@@ -160,5 +233,25 @@ describe('navigation route stubs', () => {
       pathname: '/stop/[stopId]',
       params: { stopId: 'HSL:1234' },
     });
+  });
+
+  it('builds the canonical typed href for the showcase route', () => {
+    expect(buildShowcaseHref()).toBe('/showcase');
+  });
+
+  it('builds the canonical typed href for the settings route', () => {
+    expect(buildSettingsHref()).toBe('/settings');
+  });
+
+  it('redirects the showcase route to settings outside development mode', () => {
+    Object.defineProperty(devGlobal, '__DEV__', {
+      configurable: true,
+      value: false,
+      writable: true,
+    });
+
+    render(<ShowcaseRoute />);
+
+    expect(mockRedirect).toHaveBeenCalledWith({ href: '/settings' }, undefined);
   });
 });
