@@ -8,5 +8,6 @@ const platformModule =
   Platform.OS === 'web' ? require('./map-view.web') : require('./map-view.native');
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-export const PlatformMapView = platformModule.PlatformMapView as ComponentType<PlatformMapViewProps>;
+export const PlatformMapView =
+  platformModule.PlatformMapView as ComponentType<PlatformMapViewProps>;
 export type { PlatformMapViewProps } from './types';

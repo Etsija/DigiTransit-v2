@@ -74,8 +74,7 @@ describe('MapScreen', () => {
           locationUpdateIntervalSeconds: number;
           searchRadiusMeters: number;
         }) => number
-      ) =>
-        selector({ locationUpdateIntervalSeconds: 20, searchRadiusMeters: 250 })
+      ) => selector({ locationUpdateIntervalSeconds: 20, searchRadiusMeters: 250 })
     );
     useDeviceLocation.mockReturnValue({
       coordinates: { latitude: 60.1699, longitude: 24.9384 },
@@ -179,7 +178,9 @@ describe('MapScreen', () => {
 
     firstCall.onMapReady();
 
-    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[map\] visible in \d+ms$/));
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[map\] visible in \d+ms$/)
+    );
     expect(consoleWarnSpy).not.toHaveBeenCalled();
   });
 

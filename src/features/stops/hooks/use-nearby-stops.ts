@@ -7,10 +7,7 @@ import {
   mapGraphqlModeToTransportMode,
   mapGraphqlTransitModeToTransportMode,
 } from '@/core/utils/transport-mode';
-import {
-  StopsNearbyQueryDocument,
-  type StopsNearbyQueryQuery,
-} from '@/generated/graphql';
+import { StopsNearbyQueryDocument, type StopsNearbyQueryQuery } from '@/generated/graphql';
 import type { TransportMode } from '@/shared/theme/theme';
 
 type NearbyStopsEdge = NonNullable<
@@ -27,6 +24,10 @@ export type NearbyStop = {
   longitude: number;
   transportMode: TransportMode | null;
   parentStationName: string | null;
+  routePatterns: {
+    label: string;
+    mode: TransportMode | null;
+  }[];
 };
 
 export type UseNearbyStopsOptions = {
@@ -53,6 +54,35 @@ function resolveTransportMode(stop: NonNullable<NonNullable<NearbyStopsEdge>['no
   }
 
   return null;
+}
+
+function normalizeRoutePatterns(
+  stop: NonNullable<NonNullable<NearbyStopsEdge>['node']>['stop']
+): NearbyStop['routePatterns'] {
+  const seen = new Set<string>();
+  const routePatterns: NearbyStop['routePatterns'] = [];
+
+  for (const pattern of stop?.patterns ?? []) {
+    const shortName = pattern?.route.shortName?.trim();
+    const longName = pattern?.route.longName?.trim();
+    const label = shortName || longName;
+
+    if (!label) {
+      continue;
+    }
+
+    const mode = mapGraphqlTransitModeToTransportMode(pattern?.route.mode);
+    const key = `${label}:${mode ?? 'unknown'}`;
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    routePatterns.push({ label, mode });
+  }
+
+  return routePatterns;
 }
 
 export function normalizeNearbyStops(data: StopsNearbyQueryQuery | undefined): NearbyStop[] {
@@ -82,6 +112,7 @@ export function normalizeNearbyStops(data: StopsNearbyQueryQuery | undefined): N
       longitude: stop.lon,
       transportMode: resolveTransportMode(stop),
       parentStationName: stop.parentStation?.name ?? null,
+      routePatterns: normalizeRoutePatterns(stop),
     });
   }
 

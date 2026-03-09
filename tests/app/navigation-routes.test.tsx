@@ -48,6 +48,15 @@ jest.mock('@/features/map/hooks/use-device-location', () => ({
   })),
 }));
 
+jest.mock('@/features/stops/stops-screen', () => ({
+  StopsScreen: ({ isActive }: { isActive?: boolean }) => {
+    const React = require('react');
+    const { Text } = require('react-native');
+
+    return <Text>{`Stops screen route (${isActive ? 'active' : 'inactive'})`}</Text>;
+  },
+}));
+
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(
     (
@@ -190,11 +199,10 @@ describe('navigation route stubs', () => {
     expect(queryByText('Settings')).toBeNull();
   });
 
-  it('renders the stops stub screen', () => {
+  it('renders the stops route entry point', () => {
     const { getByText } = render(<StopsScreen />);
 
-    expect(getByText('Stops')).toBeTruthy();
-    expect(getByText('Stops screen stub')).toBeTruthy();
+    expect(getByText('Stops screen route (active)')).toBeTruthy();
   });
 
   it('renders the settings screen with the current app version', () => {

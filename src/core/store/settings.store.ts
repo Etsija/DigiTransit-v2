@@ -4,11 +4,8 @@ import type { StateStorage } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
 
 import { migrateSettingsState, resolvePersistedSettingsState } from '@/core/store/migrations';
-import {
-  createJSONStorage,
-  persist,
-} from '@/core/store/zustand-middleware-shim';
 import { SETTINGS_STORAGE_KEY, SETTINGS_STORAGE_VERSION } from '@/core/store/storage-keys';
+import { createJSONStorage, persist } from '@/core/store/zustand-middleware-shim';
 import {
   defaultPersistedSettings,
   sanitizeSettingsPatch,

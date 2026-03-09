@@ -7,9 +7,12 @@ import { theme, TransportMode } from '@/shared/theme/theme';
 
 export type StopCardProps = {
   name: string;
-  code: string;
-  transportMode: TransportMode;
+  code?: string | null;
+  transportMode?: TransportMode | null;
   distanceLabel?: string;
+  zoneLabel?: string;
+  routePatternsLabel?: string;
+  secondaryLabel?: string;
   isPinned?: boolean;
   onPress: () => void;
 };
@@ -19,17 +22,35 @@ export function StopCard({
   code,
   transportMode,
   distanceLabel,
+  zoneLabel,
+  routePatternsLabel,
+  secondaryLabel,
   isPinned = false,
   onPress,
 }: StopCardProps) {
-  const transportColor = theme.colors.transport[transportMode];
-  const accessibilityParts = [name, transportMode, 'stop', code];
+  const resolvedTransportMode = transportMode ?? 'bus';
+  const transportColor = transportMode
+    ? theme.colors.transport[transportMode]
+    : theme.colors.text.secondary;
+  const accessibilityParts = [name];
+
+  if (transportMode) {
+    accessibilityParts.push(transportMode);
+  }
+
+  accessibilityParts.push('stop', code ?? 'No code');
   const tintOpacity = Math.round(theme.glass.transportTintOpacity * 255)
     .toString(16)
     .padStart(2, '0');
 
   if (distanceLabel) {
     accessibilityParts.push(distanceLabel);
+  }
+  if (zoneLabel) {
+    accessibilityParts.push(zoneLabel);
+  }
+  if (routePatternsLabel) {
+    accessibilityParts.push(`routes ${routePatternsLabel}`);
   }
   if (isPinned) {
     accessibilityParts.push('home pinned');
@@ -68,7 +89,11 @@ export function StopCard({
               },
             ]}
           >
-            <TransportIcon mode={transportMode} size={14} color={theme.colors.text.primary} />
+            <TransportIcon
+              mode={resolvedTransportMode}
+              size={14}
+              color={theme.colors.text.primary}
+            />
           </View>
 
           <View style={styles.textContent}>
@@ -84,23 +109,31 @@ export function StopCard({
                 </View>
               ) : null}
             </View>
-            {distanceLabel ? <Text style={styles.metaText}>{distanceLabel}</Text> : null}
+            {secondaryLabel ? <Text style={styles.metaText}>{secondaryLabel}</Text> : null}
+            {distanceLabel || zoneLabel ? (
+              <Text style={styles.metaText}>
+                {[zoneLabel, distanceLabel].filter(Boolean).join(' • ')}
+              </Text>
+            ) : null}
+            {routePatternsLabel ? <Text style={styles.routeText}>{routePatternsLabel}</Text> : null}
           </View>
 
-          <View
-            style={[
-              styles.codeBadge,
-              {
-                backgroundColor: `${transportColor}${Math.round(
-                  theme.glass.codeBadgeBgOpacity * 255
-                )
-                  .toString(16)
-                  .padStart(2, '0')}`,
-              },
-            ]}
-          >
-            <Text style={[styles.codeText, { color: transportColor }]}>{code}</Text>
-          </View>
+          {code ? (
+            <View
+              style={[
+                styles.codeBadge,
+                {
+                  backgroundColor: `${transportColor}${Math.round(
+                    theme.glass.codeBadgeBgOpacity * 255
+                  )
+                    .toString(16)
+                    .padStart(2, '0')}`,
+                },
+              ]}
+            >
+              <Text style={[styles.codeText, { color: transportColor }]}>{code}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </Pressable>
@@ -171,6 +204,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     fontSize: theme.typography.sm.fontSize,
     fontWeight: theme.typography.sm.fontWeight,
+  },
+  routeText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.7,

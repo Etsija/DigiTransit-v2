@@ -27,6 +27,7 @@ describe('use-map-stop-markers helpers', () => {
           longitude: 24.94,
           transportMode: 'tram',
           parentStationName: null,
+          routePatterns: [],
         },
         {
           gtfsId: 'HSL:far',
@@ -38,6 +39,7 @@ describe('use-map-stop-markers helpers', () => {
           longitude: 24.95,
           transportMode: null,
           parentStationName: null,
+          routePatterns: [],
         },
       ],
       { maxDistanceMeters: 250, onSelectStop }
@@ -67,6 +69,7 @@ describe('use-map-stop-markers helpers', () => {
           longitude: 24.94,
           transportMode: 'tram',
           parentStationName: null,
+          routePatterns: [],
         },
         {
           gtfsId: 'HSL:mid',
@@ -78,6 +81,7 @@ describe('use-map-stop-markers helpers', () => {
           longitude: 24.95,
           transportMode: 'bus',
           parentStationName: null,
+          routePatterns: [],
         },
       ],
       { maxDistanceMeters: 250 }
