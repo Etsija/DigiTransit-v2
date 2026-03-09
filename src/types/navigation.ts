@@ -1,5 +1,3 @@
-import type { Href } from 'expo-router';
-
 export const TAB_ROUTES = [
   { key: 'map', label: 'Map', href: '/map' },
   { key: 'stops', label: 'Stops', href: '/stops' },
@@ -13,9 +11,12 @@ export type StopRouteParams = {
   stopId: string;
 };
 
-export type StopRouteHref = Extract<Href, { pathname: '/stop/[stopId]' }>;
-export type SettingsRouteHref = Extract<Href, '/settings'>;
-export type ShowcaseRouteHref = Extract<Href, '/showcase'>;
+export type StopRouteHref = {
+  pathname: '/stop/[stopId]';
+  params: StopRouteParams;
+};
+export type SettingsRouteHref = '/settings';
+export type ShowcaseRouteHref = '/showcase';
 
 export function isPrimaryTabPath(pathname: string | null | undefined): pathname is TabRouteHref {
   return TAB_ROUTES.some((route) => route.href === pathname);

@@ -37,17 +37,19 @@ const LEGACY_VEHICLE_TYPE_TO_TRANSPORT_MODE: Record<number, TransportMode> = {
 };
 
 export function mapGraphqlModeToTransportMode(mode: Mode | null | undefined): TransportMode | null {
-  return mode ? MODE_TO_TRANSPORT_MODE[mode] ?? null : null;
+  return mode ? (MODE_TO_TRANSPORT_MODE[mode] ?? null) : null;
 }
 
 export function mapGraphqlTransitModeToTransportMode(
   mode: TransitMode | null | undefined
 ): TransportMode | null {
-  return mode ? TRANSIT_MODE_TO_TRANSPORT_MODE[mode] ?? null : null;
+  return mode ? (TRANSIT_MODE_TO_TRANSPORT_MODE[mode] ?? null) : null;
 }
 
 export function mapLegacyVehicleTypeToTransportMode(
   vehicleType: number | null | undefined
 ): TransportMode | null {
-  return typeof vehicleType === 'number' ? LEGACY_VEHICLE_TYPE_TO_TRANSPORT_MODE[vehicleType] ?? null : null;
+  return typeof vehicleType === 'number'
+    ? (LEGACY_VEHICLE_TYPE_TO_TRANSPORT_MODE[vehicleType] ?? null)
+    : null;
 }

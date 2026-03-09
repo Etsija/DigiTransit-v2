@@ -44,7 +44,10 @@ export default function SettingsScreen() {
               accessibilityLabel={`App version ${appVersion}`}
               accessibilityRole='button'
               onPress={handleVersionPress}
-              style={({ pressed }) => [styles.versionButton, pressed && styles.versionButtonPressed]}
+              style={({ pressed }) => [
+                styles.versionButton,
+                pressed && styles.versionButtonPressed,
+              ]}
             >
               <ThemedText themeColor='textSecondary' style={styles.versionText}>
                 Version {appVersion}

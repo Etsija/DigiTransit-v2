@@ -23,6 +23,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Codegen
+        run: pnpm codegen
+        env:
+          EXPO_PUBLIC_DIGITRANSIT_API_KEY: ${{ secrets.DIGITRANSIT_API_KEY }}
+
       - name: Lint
         run: pnpm lint
 
@@ -35,7 +40,6 @@ jobs:
       - name: Test
         run: pnpm test:ci
 
-      # Requires repository secret DIGITRANSIT_API_KEY for schema introspection.
       - name: Codegen check
         run: pnpm codegen:check
         env:

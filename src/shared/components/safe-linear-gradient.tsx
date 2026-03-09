@@ -22,21 +22,20 @@ function canUseNativeLinearGradient() {
   try {
     return Boolean(
       globalThis.expo &&
-        'getViewConfig' in globalThis.expo &&
-        globalThis.expo.getViewConfig?.('ExpoLinearGradient')
+      'getViewConfig' in globalThis.expo &&
+      globalThis.expo.getViewConfig?.('ExpoLinearGradient')
     );
   } catch {
     return false;
   }
 }
 
-const hasNativeLinearGradient =
-  canUseNativeLinearGradient();
+const hasNativeLinearGradient = canUseNativeLinearGradient();
 
 const NativeLinearGradient: React.ComponentType<SafeLinearGradientProps> | null =
   hasNativeLinearGradient
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    ? (require('expo-linear-gradient')
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require('expo-linear-gradient')
         .LinearGradient as React.ComponentType<SafeLinearGradientProps>)
     : null;
 

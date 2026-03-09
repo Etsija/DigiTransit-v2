@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { DIGITRANSIT_API_URL, DIGITRANSIT_API_KEY } from '@/core/config/env';
+import { DIGITRANSIT_API_KEY, DIGITRANSIT_API_URL } from '@/core/config/env';
 import { formatServiceDayDepartureTime } from '@/core/utils/date';
 import { GlassCard } from '@/shared/components/glass-card';
 import { theme } from '@/shared/theme/theme';
@@ -48,11 +48,15 @@ function renderErrorMessage(error: {
   };
 }
 
-export function LiveApiSection({ enabled = __DEV__, hasApiKey = Boolean(DIGITRANSIT_API_KEY) }: LiveApiSectionProps) {
-  const { coords, departuresQuery, firstValidDeparture, nearbyQuery, nearbyStop } = useLiveApiValidation({
-    enabled,
-    hasApiKey,
-  });
+export function LiveApiSection({
+  enabled = __DEV__,
+  hasApiKey = Boolean(DIGITRANSIT_API_KEY),
+}: LiveApiSectionProps) {
+  const { coords, departuresQuery, firstValidDeparture, nearbyQuery, nearbyStop } =
+    useLiveApiValidation({
+      enabled,
+      hasApiKey,
+    });
 
   if (!enabled) {
     return null;
@@ -96,7 +100,8 @@ export function LiveApiSection({ enabled = __DEV__, hasApiKey = Boolean(DIGITRAN
       <GlassCard style={styles.card}>
         <Text style={styles.errorTitle}>Nearby stop validation failed.</Text>
         <Text style={styles.errorBody}>
-          The query did not return a stop with a name, gtfsId, and numeric distance for the Hyvinkaa dev coordinates.
+          The query did not return a stop with a name, gtfsId, and numeric distance for the Hyvinkaa
+          dev coordinates.
         </Text>
         <Diagnostics coords={coords} />
       </GlassCard>
@@ -130,7 +135,8 @@ export function LiveApiSection({ enabled = __DEV__, hasApiKey = Boolean(DIGITRAN
       <GlassCard style={styles.card}>
         <Text style={styles.errorTitle}>Departure validation failed.</Text>
         <Text style={styles.errorBody}>
-          The stop query did not return a departure with scheduledDeparture, serviceDay, realtimeState, trip.route.shortName, and headsign.
+          The stop query did not return a departure with scheduledDeparture, serviceDay,
+          realtimeState, trip.route.shortName, and headsign.
         </Text>
         <Diagnostics coords={coords} />
         <NearbyStopSummary nearbyStop={nearbyStop} />
@@ -143,7 +149,9 @@ export function LiveApiSection({ enabled = __DEV__, hasApiKey = Boolean(DIGITRAN
       <Text style={styles.successTitle}>Live DigiTransit validation passed.</Text>
       <Diagnostics coords={coords} />
       <NearbyStopSummary nearbyStop={nearbyStop} />
-      <Text style={styles.detailText}>Stop name: {departuresQuery.data?.stop?.name ?? nearbyStop.stop.name}</Text>
+      <Text style={styles.detailText}>
+        Stop name: {departuresQuery.data?.stop?.name ?? nearbyStop.stop.name}
+      </Text>
       {departureSummary ? <Text style={styles.detailText}>{departureSummary}</Text> : null}
       <Text style={styles.warningText}>
         Schema watch: using `vehicleMode` with `route.mode` fallback for Epic 2 readiness.
