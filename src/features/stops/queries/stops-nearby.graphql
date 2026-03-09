@@ -9,6 +9,8 @@ query StopsNearbyQuery($lat: Float!, $lon: Float!, $radius: Int!) {
           name
           code
           zoneId
+          lat
+          lon
           vehicleMode
           parentStation {
             name

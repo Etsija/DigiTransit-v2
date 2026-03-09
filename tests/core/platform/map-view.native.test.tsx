@@ -1,11 +1,15 @@
 /// <reference types="jest" />
 
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import React from 'react';
 
 import { PlatformMapView } from '@/core/platform/maps/map-view.native';
 
 const mockAnimateToRegion = jest.fn();
+
+jest.mock('@/shared/icons', () => ({
+  TransportIcon: () => null,
+}));
 
 jest.mock('react-native-maps', () => {
   const React = require('react');
@@ -30,7 +34,13 @@ jest.mock('react-native-maps', () => {
 
 describe('PlatformMapView native', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     mockAnimateToRegion.mockClear();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
   });
 
   it('renders a live map surface with user location and dark style configuration', () => {
@@ -66,7 +76,7 @@ describe('PlatformMapView native', () => {
   });
 
   it('accepts marker scaffolding without changing the adapter boundary again', () => {
-    const { getByLabelText } = render(
+    const { getAllByLabelText, getByTestId } = render(
       <PlatformMapView
         latitude={60.1699}
         longitude={24.9384}
@@ -75,6 +85,8 @@ describe('PlatformMapView native', () => {
             id: 'stop-1',
             latitude: 60.17,
             longitude: 24.94,
+            size: 44,
+            transportMode: 'bus',
             accessibilityLabel: 'Central Railway stop',
           },
         ]}
@@ -82,6 +94,13 @@ describe('PlatformMapView native', () => {
       />
     );
 
-    expect(getByLabelText('Central Railway stop')).toBeTruthy();
+    expect(getAllByLabelText('Central Railway stop').length).toBeGreaterThan(0);
+    expect(getByTestId('map-marker-stop-1').props.tracksViewChanges).toBe(true);
+
+    act(() => {
+      jest.advanceTimersByTime(250);
+    });
+
+    expect(getByTestId('map-marker-stop-1').props.tracksViewChanges).toBe(false);
   });
 });

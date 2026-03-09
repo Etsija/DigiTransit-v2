@@ -42,6 +42,10 @@ jest.mock('@/features/map/hooks/use-device-location', () => ({
   useDeviceLocation: jest.fn(),
 }));
 
+jest.mock('@/features/stops/hooks/use-nearby-stops', () => ({
+  useNearbyStops: jest.fn(),
+}));
+
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(),
 }));
@@ -53,6 +57,9 @@ describe('MapScreen', () => {
   const { useDeviceLocation } = jest.requireMock('@/features/map/hooks/use-device-location') as {
     useDeviceLocation: jest.Mock;
   };
+  const { useNearbyStops } = jest.requireMock('@/features/stops/hooks/use-nearby-stops') as {
+    useNearbyStops: jest.Mock;
+  };
   const { useSettingsStore } = jest.requireMock('@/core/store/settings.store') as {
     useSettingsStore: jest.Mock;
   };
@@ -62,8 +69,13 @@ describe('MapScreen', () => {
 
   beforeEach(() => {
     useSettingsStore.mockImplementation(
-      (selector: (state: { locationUpdateIntervalSeconds: number }) => number) =>
-        selector({ locationUpdateIntervalSeconds: 20 })
+      (
+        selector: (state: {
+          locationUpdateIntervalSeconds: number;
+          searchRadiusMeters: number;
+        }) => number
+      ) =>
+        selector({ locationUpdateIntervalSeconds: 20, searchRadiusMeters: 250 })
     );
     useDeviceLocation.mockReturnValue({
       coordinates: { latitude: 60.1699, longitude: 24.9384 },
@@ -71,6 +83,11 @@ describe('MapScreen', () => {
       isFixed: true,
       isLoading: false,
       error: null,
+    });
+    useNearbyStops.mockReturnValue({
+      data: [],
+      isFetching: false,
+      status: 'success',
     });
   });
 
@@ -151,6 +168,7 @@ describe('MapScreen', () => {
     expect(getByTestId('live-map-surface').props.latitude).toBe(60.1699);
     expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
     expect(getByTestId('live-map-surface').props.showUserLocation).toBe(true);
+    expect(getByTestId('live-map-surface').props.markers).toEqual([]);
   });
 
   it('measures when the map becomes visible', () => {
@@ -187,5 +205,61 @@ describe('MapScreen', () => {
     fireEvent.press(getByRole('button', { name: 'Open app settings' }));
 
     expect(openSettingsSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not run nearby stops against fallback-only denied coordinates', async () => {
+    useDeviceLocation.mockReturnValue({
+      coordinates: null,
+      permission: { status: 'denied', canAskAgain: false },
+      isFixed: false,
+      isLoading: false,
+      error: null,
+    });
+
+    render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(useNearbyStops).toHaveBeenCalledWith({
+        coordinates: null,
+        enabled: false,
+      });
+    });
+  });
+
+  it('passes marker props through without affecting map-ready instrumentation', () => {
+    useNearbyStops.mockReturnValue({
+      data: [
+        {
+          gtfsId: 'HSL:1001',
+          name: 'Central station',
+          code: '1001',
+          zoneId: 'A',
+          distanceMeters: 20,
+          latitude: 60.17,
+          longitude: 24.94,
+          transportMode: 'bus',
+          parentStationName: null,
+        },
+      ],
+      isFetching: true,
+      status: 'success',
+    });
+
+    render(<MapScreen />);
+
+    const firstCall = PlatformMapView.mock.calls[0]?.[0];
+    expect(firstCall.markers).toEqual([
+      expect.objectContaining({
+        id: 'HSL:1001',
+        latitude: 60.17,
+        longitude: 24.94,
+        transportMode: 'bus',
+      }),
+    ]);
+
+    firstCall.onMapReady();
+    firstCall.onMapReady();
+
+    expect(consoleInfoSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,3 +1,5 @@
+import type { TransportMode } from '@/shared/theme/theme';
+
 export type PlatformMapCamera = {
   latitude: number;
   longitude: number;
@@ -7,12 +9,13 @@ export type PlatformMapCamera = {
 
 export type PlatformMapMarker = {
   id: string;
+  stopId?: string;
   latitude: number;
   longitude: number;
-  color?: string;
-  title?: string;
-  description?: string;
+  transportMode: TransportMode;
+  size: number;
   accessibilityLabel?: string;
+  onPress?: () => void;
 };
 
 export type PlatformMapViewProps = {

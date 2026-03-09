@@ -7,13 +7,18 @@ import { theme, TransportMode } from '@/shared/theme/theme';
 export type MapMarkerProps = {
   transportMode: TransportMode;
   label: string;
-  size: 'base' | 'near';
+  size: 'base' | 'near' | number;
   onPress?: () => void;
 };
 
 export function MapMarker({ transportMode, label, size, onPress }: MapMarkerProps) {
   const transportColor = theme.colors.transport[transportMode];
-  const markerSize = size === 'near' ? theme.layout.markerSizeNear : theme.layout.markerSizeBase;
+  const markerSize =
+    typeof size === 'number'
+      ? Math.min(theme.layout.markerSizeNear, Math.max(theme.layout.markerSizeBase, size))
+      : size === 'near'
+        ? theme.layout.markerSizeNear
+        : theme.layout.markerSizeBase;
   const iconSize = Math.round(markerSize * 0.6);
   const marker = (
     <View style={styles.hitTarget}>
