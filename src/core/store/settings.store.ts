@@ -1,9 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from 'zustand';
-import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
+import type { StateStorage } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
 
 import { migrateSettingsState, resolvePersistedSettingsState } from '@/core/store/migrations';
+import {
+  createJSONStorage,
+  persist,
+} from '@/core/store/zustand-middleware-shim';
 import { SETTINGS_STORAGE_KEY, SETTINGS_STORAGE_VERSION } from '@/core/store/storage-keys';
 import {
   defaultPersistedSettings,
@@ -25,6 +29,20 @@ const initialPersistedState: PersistedSettings = {
   settingsVersion: SETTINGS_STORAGE_VERSION,
 };
 
+const noopStorage: StateStorage = {
+  getItem: async () => null,
+  setItem: async () => {},
+  removeItem: async () => {},
+};
+
+function getDefaultSettingsStorage(): StateStorage {
+  if (typeof window === 'undefined') {
+    return noopStorage;
+  }
+
+  return AsyncStorage;
+}
+
 function partializeSettingsState(state: SettingsStore): PersistedSettings {
   return {
     searchRadiusMeters: state.searchRadiusMeters,
@@ -38,7 +56,7 @@ function partializeSettingsState(state: SettingsStore): PersistedSettings {
   };
 }
 
-export function createSettingsStore(storage: StateStorage = AsyncStorage) {
+export function createSettingsStore(storage: StateStorage = getDefaultSettingsStorage()) {
   const store = createStore<SettingsStore>()(
     persist(
       (set) => ({

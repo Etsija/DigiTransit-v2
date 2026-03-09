@@ -253,6 +253,32 @@ describe('settings store', () => {
     });
   });
 
+  it('does not persist transient location coordinates into the settings payload', async () => {
+    const storage = createMemoryStorage();
+    const store = createSettingsStore(storage);
+
+    await hydrateStore(store);
+
+    store.setState({
+      latitude: 60.1699,
+      longitude: 24.9384,
+    } as never);
+
+    store.getState().updateSettings({
+      locationUpdateIntervalSeconds: 25,
+    });
+
+    await Promise.resolve();
+
+    const persistedPayload = JSON.parse(
+      (storage.setItem as jest.Mock).mock.calls.at(-1)?.[1] as string
+    );
+
+    expect(persistedPayload.state.locationUpdateIntervalSeconds).toBe(25);
+    expect(persistedPayload.state.latitude).toBeUndefined();
+    expect(persistedPayload.state.longitude).toBeUndefined();
+  });
+
   it('exposes the reserved storage keys', () => {
     expect(SETTINGS_STORAGE_KEY).toBe('app.settings.v1');
     expect(HOME_STOP_STORAGE_KEY).toBe('app.homeStop.v1');

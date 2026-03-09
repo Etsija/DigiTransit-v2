@@ -28,6 +28,12 @@
       "expo-router",
       "./plugins/withAsyncStorageAndroidRepo",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow DigiTransit to use your location to center the map and find nearby stops."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
