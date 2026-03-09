@@ -1,6 +1,7 @@
 const appJson = require('./app.json');
 
 const androidGoogleMapsApiKey = process.env.EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY;
+const iosGoogleMapsApiKey = process.env.EXPO_PUBLIC_IOS_GOOGLE_MAPS_API_KEY;
 const baseExpoConfig = appJson.expo;
 
 const plugins = (baseExpoConfig.plugins ?? []).filter((plugin) => {
@@ -11,11 +12,12 @@ const plugins = (baseExpoConfig.plugins ?? []).filter((plugin) => {
   return plugin[0] !== 'react-native-maps';
 });
 
-if (androidGoogleMapsApiKey) {
+if (androidGoogleMapsApiKey || iosGoogleMapsApiKey) {
   plugins.push([
     'react-native-maps',
     {
       androidGoogleMapsApiKey,
+      iosGoogleMapsApiKey,
     },
   ]);
 }
