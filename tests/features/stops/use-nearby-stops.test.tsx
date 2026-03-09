@@ -6,10 +6,9 @@ import React from 'react';
 import { Text } from 'react-native';
 
 import { requestGraphql } from '@/core/api/graphql-client';
-import {
-  normalizeNearbyStops,
-  useNearbyStops,
-} from '@/features/stops/hooks/use-nearby-stops';
+import { queryKeys } from '@/core/api/query-keys';
+import { useDeviceLocation } from '@/features/map/hooks/use-device-location';
+import { normalizeNearbyStops, useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
 
 jest.mock('@/core/api/graphql-client', () => ({
   requestGraphql: jest.fn(),
@@ -17,6 +16,17 @@ jest.mock('@/core/api/graphql-client', () => ({
 
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(),
+}));
+
+jest.mock('expo-location', () => ({
+  Accuracy: {
+    Balanced: 'balanced',
+  },
+  getCurrentPositionAsync: jest.fn(),
+  getForegroundPermissionsAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn(),
+  requestForegroundPermissionsAsync: jest.fn(),
+  watchPositionAsync: jest.fn(),
 }));
 
 function renderWithQueryClient(node: React.ReactElement) {
@@ -41,11 +51,41 @@ function NearbyStopsHarness(props: {
   return <Text>{JSON.stringify({ count: query.data?.length ?? 0, status: query.status })}</Text>;
 }
 
+function DualNearbyStopsHarness(props: {
+  coordinates: { latitude: number; longitude: number } | null;
+}) {
+  useNearbyStops(props);
+  useNearbyStops(props);
+
+  return <Text>dual</Text>;
+}
+
+function SharedLocationNearbyStopsHarness() {
+  const location = useDeviceLocation({
+    intervalSeconds: 20,
+    isActive: true,
+  });
+  const query = useNearbyStops({
+    coordinates: location.coordinates,
+    enabled: true,
+  });
+
+  return <Text>{JSON.stringify({ count: query.data?.length ?? 0, status: query.status })}</Text>;
+}
+
 describe('useNearbyStops', () => {
   const mockRequestGraphql = jest.mocked(requestGraphql);
   const { useSettingsStore } = jest.requireMock('@/core/store/settings.store') as {
     useSettingsStore: jest.Mock;
   };
+  const expoLocation = jest.requireMock('expo-location') as {
+    getCurrentPositionAsync: jest.Mock;
+    getForegroundPermissionsAsync: jest.Mock;
+    getLastKnownPositionAsync: jest.Mock;
+    requestForegroundPermissionsAsync: jest.Mock;
+    watchPositionAsync: jest.Mock;
+  };
+  const removeWatcher = jest.fn();
 
   beforeEach(() => {
     useSettingsStore.mockImplementation(
@@ -60,6 +100,27 @@ describe('useNearbyStops', () => {
           stopsPollingIntervalSeconds: 20,
         })
     );
+
+    expoLocation.getForegroundPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: 'granted',
+      canAskAgain: true,
+    });
+    expoLocation.requestForegroundPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: 'granted',
+      canAskAgain: true,
+    });
+    expoLocation.getLastKnownPositionAsync.mockResolvedValue(null);
+    expoLocation.getCurrentPositionAsync.mockResolvedValue({
+      coords: {
+        latitude: 60.1699,
+        longitude: 24.9384,
+      },
+    });
+    expoLocation.watchPositionAsync.mockResolvedValue({
+      remove: removeWatcher,
+    });
   });
 
   afterEach(() => {
@@ -81,6 +142,22 @@ describe('useNearbyStops', () => {
                   zoneId: null,
                   lat: null,
                   lon: 24.94,
+                  vehicleMode: 'BUS',
+                  parentStation: null,
+                  patterns: [],
+                },
+              },
+            },
+            {
+              node: {
+                distance: 140,
+                stop: {
+                  gtfsId: 'HSL:1003',
+                  name: 'Outer stop',
+                  code: '1003',
+                  zoneId: 'B',
+                  lat: 60.18,
+                  lon: 24.95,
                   vehicleMode: 'BUS',
                   parentStation: null,
                   patterns: [],
@@ -111,6 +188,15 @@ describe('useNearbyStops', () => {
                       },
                       stops: [],
                     },
+                    {
+                      directionId: 1,
+                      route: {
+                        shortName: '',
+                        longName: 'Airport Express',
+                        mode: 'BUS',
+                      },
+                      stops: [],
+                    },
                   ],
                 },
               },
@@ -129,6 +215,22 @@ describe('useNearbyStops', () => {
         longitude: 24.94,
         transportMode: 'tram',
         parentStationName: 'Central',
+        routePatterns: [
+          { label: '4', mode: 'tram' },
+          { label: 'Airport Express', mode: 'bus' },
+        ],
+      },
+      {
+        gtfsId: 'HSL:1003',
+        name: 'Outer stop',
+        code: '1003',
+        zoneId: 'B',
+        distanceMeters: 140,
+        latitude: 60.18,
+        longitude: 24.95,
+        transportMode: 'bus',
+        parentStationName: null,
+        routePatterns: [],
       },
     ]);
   });
@@ -183,5 +285,56 @@ describe('useNearbyStops', () => {
         radius: 250,
       })
     );
+  });
+
+  it('uses the shared nearby query key contract for cache deduplication', async () => {
+    mockRequestGraphql.mockResolvedValueOnce({
+      stopsByRadius: {
+        edges: [],
+      },
+    });
+
+    renderWithQueryClient(
+      <DualNearbyStopsHarness coordinates={{ latitude: 60.1699, longitude: 24.9384 }} />
+    );
+
+    await waitFor(() => {
+      expect(mockRequestGraphql).toHaveBeenCalledTimes(1);
+    });
+
+    const [, variables] = mockRequestGraphql.mock.calls[0] ?? [];
+    expect(queryKeys.stops.nearby({ lat: 60.1699, lon: 24.9384, radius: 250 })).toEqual([
+      'stops',
+      'nearby',
+      { lat: 60.1699, lon: 24.9384, radius: 250 },
+    ]);
+    expect(variables).toEqual({
+      lat: 60.1699,
+      lon: 24.9384,
+      radius: 250,
+    });
+  });
+
+  it('shares a single location source and query request across multiple mounted consumers', async () => {
+    mockRequestGraphql.mockResolvedValue({
+      stopsByRadius: {
+        edges: [],
+      },
+    });
+
+    renderWithQueryClient(
+      <>
+        <SharedLocationNearbyStopsHarness />
+        <SharedLocationNearbyStopsHarness />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(mockRequestGraphql).toHaveBeenCalledTimes(1);
+    });
+
+    expect(expoLocation.getForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(expoLocation.getCurrentPositionAsync).toHaveBeenCalledTimes(1);
+    expect(expoLocation.watchPositionAsync).toHaveBeenCalledTimes(1);
   });
 });

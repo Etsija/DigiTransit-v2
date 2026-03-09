@@ -5,7 +5,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { getMapboxPublicToken } from '@/core/config/env';
 import { MapMarker } from '@/shared/components/map-marker';
 import { theme } from '@/shared/theme/theme';
-
 import type { PlatformMapMarker, PlatformMapViewProps } from './types';
 
 export const MAPBOX_DARK_STYLE_URL = 'mapbox://styles/mapbox/dark-v11';
@@ -55,10 +54,7 @@ function createMarkerRoot(container: Element | DocumentFragment): MarkerRoot {
   return reactDomClient.createRoot(container);
 }
 
-export function syncMapboxMarkers(
-  map: mapboxgl.Map,
-  markers: PlatformMapMarker[]
-) {
+export function syncMapboxMarkers(map: mapboxgl.Map, markers: PlatformMapMarker[]) {
   const activeMarkers: ManagedMapboxMarker[] = [];
 
   for (const markerData of markers) {

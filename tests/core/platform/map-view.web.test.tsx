@@ -4,8 +4,8 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 
 import {
-  PlatformMapView,
   buildMapboxOptions,
+  PlatformMapView,
   syncMapboxMarkers,
 } from '@/core/platform/maps/map-view.web';
 
@@ -72,7 +72,9 @@ describe('PlatformMapView web', () => {
     );
 
     expect(getByText('Map preview unavailable')).toBeTruthy();
-    expect(getByText('Add EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN to enable the live web map.')).toBeTruthy();
+    expect(
+      getByText('Add EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN to enable the live web map.')
+    ).toBeTruthy();
     expect(queryByTestId('live-map-surface')).toBeNull();
     expect(mockCreateMap).not.toHaveBeenCalled();
   });

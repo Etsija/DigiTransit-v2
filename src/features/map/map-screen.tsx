@@ -2,8 +2,8 @@ import React, { useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useSettingsStore } from '@/core/store/settings.store';
 import { PlatformMapView } from '@/core/platform/maps/map-view';
+import { useSettingsStore } from '@/core/store/settings.store';
 import { LocationDeniedState } from '@/features/map/components/location-denied-state';
 import { HELSINKI_FALLBACK_COORDINATES } from '@/features/map/constants';
 import { useDeviceLocation } from '@/features/map/hooks/use-device-location';

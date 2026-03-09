@@ -10,14 +10,17 @@ import MapView, {
 import { getIosGoogleMapsApiKey } from '@/core/config/env';
 import { MAP_REGION_DELTA } from '@/features/map/constants';
 import { MapMarker } from '@/shared/components/map-marker';
-
 import type { PlatformMapViewProps } from './types';
 
 const DARK_MAP_STYLE: MapStyleElement[] = [
   { elementType: 'geometry', stylers: [{ color: '#0b1220' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#8ea3b7' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#0b1220' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#1f2937' }] },
+  {
+    featureType: 'administrative',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#1f2937' }],
+  },
   { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
   { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#111827' }] },
   { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0a1a17' }] },
@@ -53,10 +56,7 @@ export function PlatformMapView({
   const mapRef = useRef<MapView | null>(null);
   const tracksViewChangesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tracksViewChanges, setTracksViewChanges] = React.useState(markers.length > 0);
-  const initialRegion = buildRegion(
-    camera?.latitude ?? latitude,
-    camera?.longitude ?? longitude
-  );
+  const initialRegion = buildRegion(camera?.latitude ?? latitude, camera?.longitude ?? longitude);
 
   useEffect(() => {
     mapRef.current?.animateToRegion(
