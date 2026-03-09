@@ -552,6 +552,7 @@ So that I have a spatial context that pairs correctly with the glassmorphism UI 
 **When** map tiles render
 **Then** a dark tile style is used (Mapbox `dark-v11` on web, equivalent dark style on native)
 **And** the map is visible within 3 seconds of app launch at the 95th percentile on a normal mobile connection (NFR1)
+**And** the live interactive map is exclusive to the Map tab; Stops and Departures must not mount a live map provider purely for background ambience
 
 **Given** the map is rendered
 **When** the user pans or zooms
@@ -606,6 +607,7 @@ So that I can browse and compare stops beyond what is immediately visible on the
 **Given** GPS coordinates are available
 **When** the Stops tab renders
 **Then** a list of nearby stops is displayed sorted by distance from current location (FR12)
+**And** any map-like background behind the list is a static image only, not a live interactive map surface
 
 **Given** each stop in the list
 **When** rendered as a `StopCard`
@@ -711,6 +713,7 @@ So that I always know which stop I'm looking at and can trust I tapped the right
 **Given** the departures screen is open
 **When** the tab bar is checked
 **Then** the tab bar is hidden — this is a push route, not a tab
+**And** any spatial/map backdrop on this screen is a static image only, not a live interactive map surface
 
 ---
 
