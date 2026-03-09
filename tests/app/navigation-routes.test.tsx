@@ -13,6 +13,38 @@ import AppTabs from '@/components/app-tabs';
 import AppTabsWeb from '@/components/app-tabs.web';
 import { buildStopHref } from '@/types/navigation';
 
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const SafeAreaView = React.forwardRef((props: any, ref: any) => <View ref={ref} {...props} />);
+  SafeAreaView.displayName = 'SafeAreaView';
+  return {
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+    SafeAreaView,
+  };
+});
+
+jest.mock('expo-glass-effect', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    GlassView: (props: any) => <View {...props} />,
+    isGlassEffectAPIAvailable: () => false,
+  };
+});
+
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+
+  return {
+    Ionicons: (props: any) => <Text testID={props.testID}>{`ion:${props.name}`}</Text>,
+    MaterialCommunityIcons: (props: any) => (
+      <Text testID={props.testID}>{`mci:${props.name}`}</Text>
+    ),
+  };
+});
+
 jest.mock('expo-router', () => ({
   Stack: Object.assign(({ children }: { children?: React.ReactNode }) => <>{children}</>, {
     Screen: jest.fn(() => null),

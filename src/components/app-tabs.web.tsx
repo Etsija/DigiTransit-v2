@@ -1,11 +1,16 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { AppIcon, AppIconName } from '@/shared/icons';
+import { theme } from '@/shared/theme/theme';
 import { isPrimaryTabPath, TAB_ROUTES } from '@/types/navigation';
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+
+const TAB_ICONS: Record<string, AppIconName> = {
+  map: 'map',
+  stops: 'list',
+  settings: 'settings-sharp',
+};
 
 export default function AppTabs() {
   const pathname = usePathname();
@@ -24,57 +29,41 @@ export default function AppTabs() {
       </Stack>
 
       {showTabBar ? (
-        <CustomTabList>
-          {TAB_ROUTES.map((route) => (
-            <TabButton
-              key={route.key}
-              accessibilityRole='button'
-              isFocused={pathname === route.href}
-              onPress={() => router.replace(route.href)}
-            >
-              {route.label}
-            </TabButton>
-          ))}
-        </CustomTabList>
+        <View style={styles.navContainer}>
+          <View style={styles.navBar}>
+            <Text style={styles.brandText}>DigiTransit</Text>
+
+            {TAB_ROUTES.map((route) => {
+              const isActive = pathname === route.href;
+              const iconName = TAB_ICONS[route.key];
+
+              return (
+                <Pressable
+                  key={route.key}
+                  accessibilityRole='button'
+                  onPress={() => router.replace(route.href)}
+                  style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}
+                >
+                  <AppIcon
+                    name={iconName}
+                    size={18}
+                    color={isActive ? theme.colors.text.primary : theme.colors.text.muted}
+                  />
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      { color: isActive ? theme.colors.text.primary : theme.colors.text.muted },
+                      isActive && styles.tabLabelActive,
+                    ]}
+                  >
+                    {route.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       ) : null}
-    </View>
-  );
-}
-
-type TabButtonProps = Omit<React.ComponentProps<typeof Pressable>, 'children'> & {
-  children: React.ReactNode;
-  isFocused?: boolean;
-};
-
-export function TabButton({ children, isFocused, ...props }: TabButtonProps) {
-  return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}
-      >
-        <ThemedText type='small' themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
-}
-
-type CustomTabListProps = {
-  children: React.ReactNode;
-};
-
-export function CustomTabList(props: CustomTabListProps) {
-  return (
-    <View style={styles.tabListContainer}>
-      <ThemedView type='backgroundElement' style={styles.innerContainer}>
-        <ThemedText type='smallBold' style={styles.brandText}>
-          DigiTransit
-        </ThemedText>
-
-        {props.children}
-      </ThemedView>
     </View>
   );
 }
@@ -83,33 +72,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  tabListContainer: {
+  navContainer: {
     position: 'absolute',
     width: '100%',
-    padding: Spacing.three,
+    padding: theme.spacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
   },
-  innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+  navBar: {
+    backgroundColor: theme.colors.card.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.card.border,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing['2xl'],
+    borderRadius: theme.radius.bar,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
+    gap: theme.spacing.sm,
+    maxWidth: theme.layout.maxContentWidth,
   },
   brandText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: '700',
     marginRight: 'auto',
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.radius.bar,
+    minHeight: theme.layout.minTouchTarget,
+  },
+  tabLabel: {
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: '500',
+  },
+  tabLabelActive: {
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.7,
-  },
-  tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
   },
 });
