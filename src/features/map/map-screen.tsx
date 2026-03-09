@@ -7,6 +7,8 @@ import { PlatformMapView } from '@/core/platform/maps/map-view';
 import { LocationDeniedState } from '@/features/map/components/location-denied-state';
 import { HELSINKI_FALLBACK_COORDINATES } from '@/features/map/constants';
 import { useDeviceLocation } from '@/features/map/hooks/use-device-location';
+import { createMapStopMarkers } from '@/features/map/hooks/use-map-stop-markers';
+import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { theme } from '@/shared/theme/theme';
 
@@ -30,6 +32,7 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
   const locationUpdateIntervalSeconds = useSettingsStore(
     (state) => state.locationUpdateIntervalSeconds
   );
+  const searchRadiusMeters = useSettingsStore((state) => state.searchRadiusMeters);
   const location = useDeviceLocation({
     intervalSeconds: locationUpdateIntervalSeconds,
     isActive,
@@ -37,6 +40,13 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
 
   const center = location.coordinates ?? HELSINKI_FALLBACK_COORDINATES;
   const showDeniedState = location.permission.status === 'denied';
+  const nearbyStopsQuery = useNearbyStops({
+    coordinates: location.coordinates,
+    enabled: isActive && Boolean(location.coordinates),
+  });
+  const markers = createMapStopMarkers(nearbyStopsQuery.data ?? [], {
+    maxDistanceMeters: searchRadiusMeters,
+  });
   const handleMapReady = () => {
     if (hasReportedMapReadyRef.current) {
       return;
@@ -61,6 +71,7 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
       <PlatformMapView
         latitude={center.latitude}
         longitude={center.longitude}
+        markers={markers}
         onMapReady={handleMapReady}
         showUserLocation={location.permission.status === 'granted'}
       />

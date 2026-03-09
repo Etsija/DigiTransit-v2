@@ -52,7 +52,7 @@ development_status:
   epic-2: in-progress
   2-1-gps-location-acquisition-and-permission-flow: done
   2-2-map-view-with-dark-tile-style: done
-  2-3-nearby-stop-markers-on-map: backlog
+  2-3-nearby-stop-markers-on-map: done
   2-4-nearby-stops-list: backlog
   2-5-home-stop-pinning: backlog
   2-6-map-tap-navigation-and-error-states: backlog

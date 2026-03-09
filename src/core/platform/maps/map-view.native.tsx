@@ -9,6 +9,7 @@ import MapView, {
 
 import { getIosGoogleMapsApiKey } from '@/core/config/env';
 import { MAP_REGION_DELTA } from '@/features/map/constants';
+import { MapMarker } from '@/shared/components/map-marker';
 
 import type { PlatformMapViewProps } from './types';
 
@@ -50,6 +51,8 @@ export function PlatformMapView({
   showUserLocation,
 }: PlatformMapViewProps) {
   const mapRef = useRef<MapView | null>(null);
+  const tracksViewChangesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tracksViewChanges, setTracksViewChanges] = React.useState(markers.length > 0);
   const initialRegion = buildRegion(
     camera?.latitude ?? latitude,
     camera?.longitude ?? longitude
@@ -61,6 +64,31 @@ export function PlatformMapView({
       250
     );
   }, [camera?.latitude, camera?.longitude, latitude, longitude]);
+
+  useEffect(() => {
+    if (tracksViewChangesTimeoutRef.current) {
+      clearTimeout(tracksViewChangesTimeoutRef.current);
+      tracksViewChangesTimeoutRef.current = null;
+    }
+
+    if (markers.length === 0) {
+      setTracksViewChanges(false);
+      return;
+    }
+
+    setTracksViewChanges(true);
+    tracksViewChangesTimeoutRef.current = setTimeout(() => {
+      setTracksViewChanges(false);
+      tracksViewChangesTimeoutRef.current = null;
+    }, 250);
+
+    return () => {
+      if (tracksViewChangesTimeoutRef.current) {
+        clearTimeout(tracksViewChangesTimeoutRef.current);
+        tracksViewChangesTimeoutRef.current = null;
+      }
+    };
+  }, [markers]);
 
   return (
     <MapView
@@ -78,12 +106,19 @@ export function PlatformMapView({
       {markers.map((marker) => (
         <Marker
           accessibilityLabel={marker.accessibilityLabel}
+          anchor={{ x: 0.5, y: 0.5 }}
           coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-          description={marker.description}
           key={marker.id}
-          pinColor={marker.color}
-          title={marker.title}
-        />
+          onPress={marker.onPress}
+          testID={`map-marker-${marker.id}`}
+          tracksViewChanges={tracksViewChanges}
+        >
+          <MapMarker
+            label={marker.accessibilityLabel ?? marker.id}
+            size={marker.size}
+            transportMode={marker.transportMode}
+          />
+        </Marker>
       ))}
     </MapView>
   );

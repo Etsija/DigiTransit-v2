@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render } from '@testing-library/react-native';
 import { Redirect, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import React from 'react';
@@ -49,8 +50,12 @@ jest.mock('@/features/map/hooks/use-device-location', () => ({
 
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(
-    (selector: (state: { locationUpdateIntervalSeconds: number }) => number) =>
-      selector({ locationUpdateIntervalSeconds: 20 })
+    (
+      selector: (state: {
+        locationUpdateIntervalSeconds: number;
+        searchRadiusMeters: number;
+      }) => number
+    ) => selector({ locationUpdateIntervalSeconds: 20, searchRadiusMeters: 250 })
   ),
 }));
 
@@ -107,6 +112,19 @@ jest.mock('expo-router', () => ({
 
 const devGlobal = globalThis as typeof globalThis & { __DEV__: boolean };
 
+function renderWithQueryClient(node: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        gcTime: Infinity,
+        retry: false,
+      },
+    },
+  });
+
+  return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>);
+}
+
 describe('navigation route stubs', () => {
   const mockRedirect = jest.mocked(Redirect);
   const mockUseLocalSearchParams = jest.mocked(useLocalSearchParams);
@@ -142,7 +160,7 @@ describe('navigation route stubs', () => {
   });
 
   it('renders the map route entry point', () => {
-    const { getByText } = render(<MapScreen />);
+    const { getByText } = renderWithQueryClient(<MapScreen />);
 
     expect(getByText('Current location')).toBeTruthy();
   });
