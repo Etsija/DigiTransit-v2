@@ -1,4 +1,4 @@
-# Finland GTFS schema keeps zoneId and vehicleType on Stop; pattern name is sourced via route.
+# Finland GTFS schema exposes vehicleMode on Stop; route.mode remains the fallback for multimode stops.
 query StopsNearbyQuery($lat: Float!, $lon: Float!, $radius: Int!) {
   stopsByRadius(lat: $lat, lon: $lon, radius: $radius) {
     edges {
@@ -9,7 +9,7 @@ query StopsNearbyQuery($lat: Float!, $lon: Float!, $radius: Int!) {
           name
           code
           zoneId
-          vehicleType
+          vehicleMode
           parentStation {
             name
           }

@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -7,6 +8,15 @@ import { View } from 'react-native';
 
 import { ShowcaseScreen } from '@/features/showcase/showcase-screen';
 import { buildSettingsHref } from '@/types/navigation';
+
+jest.mock('@/features/showcase/live-api-section', () => ({
+  LiveApiSection: () => {
+    const React = require('react');
+    const { View } = require('react-native');
+
+    return <View accessibilityLabel='Live API section stub' />;
+  },
+}));
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
@@ -54,6 +64,23 @@ jest.mock('expo-router', () => ({
 describe('ShowcaseScreen', () => {
   const mockUseRouter = jest.mocked(useRouter);
 
+  function renderScreen() {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          gcTime: Infinity,
+          retry: false,
+        },
+      },
+    });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <ShowcaseScreen />
+      </QueryClientProvider>
+    );
+  }
+
   beforeEach(() => {
     mockUseRouter.mockReturnValue({
       back: jest.fn(),
@@ -66,9 +93,7 @@ describe('ShowcaseScreen', () => {
   });
 
   it('renders the required showcase sections and variant labels', () => {
-    const { getAllByLabelText, getAllByText, getByText, getByLabelText } = render(
-      <ShowcaseScreen />
-    );
+    const { getAllByLabelText, getAllByText, getByText, getByLabelText } = renderScreen();
 
     expect(getByText('Showcase')).toBeTruthy();
     expect(getByText('GlassCard')).toBeTruthy();
@@ -79,6 +104,7 @@ describe('ShowcaseScreen', () => {
     expect(getByText('ErrorBanner')).toBeTruthy();
     expect(getByText('EmptyState')).toBeTruthy();
     expect(getByText('DepartureNotificationDialog')).toBeTruthy();
+    expect(getByText('Live API')).toBeTruthy();
     expect(getAllByText('Asema-aukio 1, Helsinki').length).toBeGreaterThan(0);
     expect(getAllByText('Pinned').length).toBeGreaterThan(0);
     expect(getAllByText('Notification scheduled').length).toBeGreaterThan(0);
@@ -98,7 +124,7 @@ describe('ShowcaseScreen', () => {
       replace,
     } as unknown as ReturnType<typeof useRouter>);
 
-    const { getByRole } = render(<ShowcaseScreen />);
+    const { getByRole } = renderScreen();
 
     fireEvent.press(getByRole('button', { name: 'Back to Settings' }));
 

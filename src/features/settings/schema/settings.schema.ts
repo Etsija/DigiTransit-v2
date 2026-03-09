@@ -1,12 +1,30 @@
 import { z } from 'zod';
 
 import { SETTINGS_STORAGE_VERSION } from '@/core/store/storage-keys';
+import { mapLegacyVehicleTypeToTransportMode } from '@/core/utils/transport-mode';
+import type { TransportMode } from '@/shared/theme/theme';
 
-export const homeStopSchema = z.object({
+const transportModeSchema = z.enum(['bus', 'tram', 'train', 'metro', 'ferry']);
+
+const currentHomeStopSchema = z.object({
   gtfsId: z.string().min(1),
   name: z.string().min(1),
-  vehicleType: z.number().int().nonnegative(),
-});
+  transportMode: transportModeSchema.nullable().default(null),
+}).strict();
+
+const legacyHomeStopSchema = z
+  .object({
+    gtfsId: z.string().min(1),
+    name: z.string().min(1),
+    vehicleType: z.number().int().nonnegative(),
+  })
+  .transform((value) => ({
+    gtfsId: value.gtfsId,
+    name: value.name,
+    transportMode: mapLegacyVehicleTypeToTransportMode(value.vehicleType),
+  }));
+
+export const homeStopSchema = z.union([currentHomeStopSchema, legacyHomeStopSchema]);
 
 const settingsFieldSchemas = {
   searchRadiusMeters: z.number().int().min(50).max(5000).default(250),
@@ -27,6 +45,7 @@ export const persistedSettingsSchema = settingsSchema.extend({
 export type HomeStop = z.infer<typeof homeStopSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type PersistedSettings = z.infer<typeof persistedSettingsSchema>;
+export type PersistedTransportMode = TransportMode | null;
 
 export const defaultSettings = settingsSchema.parse({});
 

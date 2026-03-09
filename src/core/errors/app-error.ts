@@ -23,7 +23,7 @@ function getGraphQLErrorMessage(error: ClientError): string | undefined {
 
 export function mapToAppError(error: unknown): AppError {
   if (error instanceof ClientError) {
-    if (error.response.status === 403) {
+    if (error.response.status === 401 || error.response.status === 403) {
       return {
         kind: 'permission',
         message: 'DigiTransit API access was rejected.',
