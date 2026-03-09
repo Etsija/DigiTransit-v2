@@ -140,7 +140,7 @@ These interactions must require zero conscious thought:
 
 **1. Dark Sky (original) / Apple Weather — Primary visual reference**
 
-The benchmark for "one fast answer from real-time data" on mobile. Its entire UX was built around a single question presented without clutter. The defining visual pattern: glassy cards floating over a live map background, with frosted glass (backdrop blur + semi-transparent dark surface), dark-gray gradient card surfaces suggesting physical depth, and data-first typography — large, readable numbers on a calm dark surface. The map is always present as a backdrop; cards feel like they are floating *above* it, not replacing it. The emotional register it creates — certain, informed, trusted — is exactly the target for DigiTransit v2.
+The benchmark for "one fast answer from real-time data" on mobile. Its entire UX was built around a single question presented without clutter. The defining visual pattern: glassy cards floating over a map background, with frosted glass (backdrop blur + semi-transparent dark surface), dark-gray gradient card surfaces suggesting physical depth, and data-first typography — large, readable numbers on a calm dark surface. For DigiTransit v2, this pattern applies differently by screen: the Map tab keeps a live interactive map, while Stops and Departures should preserve the same visual mood with a static map image backdrop only. Cards should still feel like they are floating *above* the spatial layer, not replacing it. The emotional register it creates — certain, informed, trusted — is exactly the target for DigiTransit v2.
 
 **2. Flighty — Trust signal reference**
 
@@ -153,7 +153,7 @@ The floating bottom sheet layered over the map — same "detached" feel as the t
 ### Transferable UX Patterns
 
 **Visual / Surface patterns:**
-- Frosted glass cards (backdrop blur + semi-transparent dark surface) floating over a blurred live map — adopted directly from Dark Sky
+- Frosted glass cards (backdrop blur + semi-transparent dark surface) floating over a blurred map treatment — adopted directly from Dark Sky, but only the Map tab uses a live interactive map
 - Dark-gray gradient on card surfaces — not flat black, but a gradient suggesting physical depth (slightly lighter surface, darker edges)
 - Subtle drop shadow + elevation on cards to reinforce the 3D / floating effect
 - Transport-type colour as card tint and left accent — same glass material, tinted by type (bus=blue, tram=green, train=purple, metro=orange, ferry=teal)
@@ -161,7 +161,7 @@ The floating bottom sheet layered over the map — same "detached" feel as the t
 - Frosted glass tab bar — map bleeds through subtly beneath it
 
 **Interaction patterns:**
-- Map always present as base layer — never fully replaced by a list or card
+- Spatial context always present as the base layer — live map on the Map tab, static map imagery on Stops and Departures, never fully replaced by a list or card
 - Bottom sheet / floating card list that layers over the map without hiding it
 - Tap stop marker → card expands / navigates to departures, map context preserved
 - Standard platform back navigation — one tap, no dead ends
@@ -537,7 +537,7 @@ flowchart TD
 ---
 
 **Stop type consistency across views — critical rule:**
-The stop card typing (tinted gradient + icon badge) must be applied identically in both the **Nearby Stops list** and the **Departures view stop header card**. The stop header in the Departures view is the same stop rendered in a larger format with additional information (patterns via the stop) — it uses the same visual identity, just with an expanded content area showing route patterns.
+The stop card typing (tinted gradient + icon badge) must be applied identically in both the **Nearby Stops list** and the **Departures view stop header card**. The stop header in the Departures view is the same stop rendered in a larger format with additional information (patterns via the stop) — it uses the same visual identity, just with an expanded content area showing route patterns. In both views, any map-like backdrop is static imagery only; neither view should mount a live map provider for decorative background effect.
 
 - All text/background combinations target WCAG AA contrast (4.5:1 minimum) — dark base + `#F1F5F9` primary text clears this comfortably
 - Transport colours are never used as the sole differentiator — always paired with shape/position (left strip + icon) to support colour-blind users
@@ -649,4 +649,4 @@ Mobile-first. Web target uses the same component tree inside a `max-width: 480px
   - DepartureCard: time + route + headsign + status (e.g. *"00:01, route 200 to Vanhakartano, live GPS"*)
   - MapMarker: stop name + type
 - Error states announced via `accessibilityLiveRegion="polite"` — screen readers catch API errors without interrupting
-- Map is decorative/supplementary when Stops tab list is the active focus
+- Map is decorative/supplementary when Stops tab list is the active focus, and should be rendered as static imagery rather than a live map surface
