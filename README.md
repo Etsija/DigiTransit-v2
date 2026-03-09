@@ -18,7 +18,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
    Then set `EXPO_PUBLIC_DIGITRANSIT_API_KEY` in `.env`.
    Register for an API key at `https://portal-api.digitransit.fi`.
+   If you want Android Google Maps tiles in a development build, also set
+   `EXPO_PUBLIC_ANDROID_GOOGLE_MAPS_API_KEY` in `.env`.
    You can optionally override the GraphQL endpoint with `EXPO_PUBLIC_DIGITRANSIT_API_URL`.
+
+   After adding the Google Maps key, rebuild the Android app so the native
+   manifest metadata is regenerated.
 
 3. Start the app
 
