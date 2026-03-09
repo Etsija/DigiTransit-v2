@@ -21,6 +21,7 @@ import {
   showcaseMarkerVariants,
   showcaseStopVariants,
 } from './mock-data';
+import { LiveApiSection } from './live-api-section';
 
 export function ShowcaseScreen() {
   const router = useRouter();
@@ -222,6 +223,13 @@ export function ShowcaseScreen() {
                 />
               </GlassCard>
             </View>
+          </ShowcaseSection>
+
+          <ShowcaseSection
+            title='Live API'
+            description='Runs the real DigiTransit nearby-stop and departures queries against fixed dev coordinates.'
+          >
+            <LiveApiSection />
           </ShowcaseSection>
         </ScrollView>
       </SafeAreaView>

@@ -82,7 +82,7 @@ describe('settings store', () => {
       homeStop: {
         gtfsId: 'HSL:1234',
         name: 'Kamppi',
-        vehicleType: 0,
+        transportMode: 'tram',
       },
       pushNotificationsEnabled: true,
       notificationLeadTimeMinutes: 5,
