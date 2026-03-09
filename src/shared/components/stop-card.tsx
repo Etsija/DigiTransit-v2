@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { TransportIcon } from '@/shared/icons';
+import { SafeLinearGradient } from '@/shared/components/safe-linear-gradient';
+import { AppIcon, TransportIcon } from '@/shared/icons';
 import { theme, TransportMode } from '@/shared/theme/theme';
 
 export type StopCardProps = {
@@ -9,15 +10,29 @@ export type StopCardProps = {
   code: string;
   transportMode: TransportMode;
   distanceLabel?: string;
+  isPinned?: boolean;
   onPress: () => void;
 };
 
-export function StopCard({ name, code, transportMode, distanceLabel, onPress }: StopCardProps) {
+export function StopCard({
+  name,
+  code,
+  transportMode,
+  distanceLabel,
+  isPinned = false,
+  onPress,
+}: StopCardProps) {
   const transportColor = theme.colors.transport[transportMode];
   const accessibilityParts = [name, transportMode, 'stop', code];
+  const tintOpacity = Math.round(theme.glass.transportTintOpacity * 255)
+    .toString(16)
+    .padStart(2, '0');
 
   if (distanceLabel) {
     accessibilityParts.push(distanceLabel);
+  }
+  if (isPinned) {
+    accessibilityParts.push('home pinned');
   }
 
   return (
@@ -27,48 +42,66 @@ export function StopCard({ name, code, transportMode, distanceLabel, onPress }: 
       accessibilityLabel={accessibilityParts.join(', ')}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
-      <View
-        style={[
-          styles.surface,
-          {
-            backgroundColor: `${transportColor}${Math.round(theme.glass.transportTintOpacity * 255)
-              .toString(16)
-              .padStart(2, '0')}`,
-          },
-        ]}
-      >
-        {/* Icon badge */}
-        <View
-          style={[
-            styles.iconBadge,
-            {
-              backgroundColor: `${transportColor}${Math.round(theme.glass.iconBadgeBgOpacity * 255)
-                .toString(16)
-                .padStart(2, '0')}`,
-            },
+      <View style={styles.surface}>
+        <SafeLinearGradient
+          colors={[
+            `${transportColor}${tintOpacity}`,
+            theme.colors.card.gradientTop,
+            theme.colors.card.gradientBottom,
           ]}
-        >
-          <TransportIcon mode={transportMode} size={14} color={theme.colors.text.primary} />
-        </View>
+          locations={[0, 0.55, 1]}
+          start={{ x: 0.04, y: 0.08 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-        {/* Stop code badge */}
-        <View
-          style={[
-            styles.codeBadge,
-            {
-              backgroundColor: `${transportColor}${Math.round(theme.glass.codeBadgeBgOpacity * 255)
-                .toString(16)
-                .padStart(2, '0')}`,
-            },
-          ]}
-        >
-          <Text style={[styles.codeText, { color: transportColor }]}>{code}</Text>
-        </View>
+        <View style={styles.content}>
+          <View
+            style={[
+              styles.iconBadge,
+              {
+                backgroundColor: `${transportColor}${Math.round(
+                  theme.glass.iconBadgeBgOpacity * 255
+                )
+                  .toString(16)
+                  .padStart(2, '0')}`,
+              },
+            ]}
+          >
+            <TransportIcon mode={transportMode} size={14} color={theme.colors.text.primary} />
+          </View>
 
-        {/* Stop name */}
-        <Text style={styles.nameText}>
-          {name}
-        </Text>
+          <View style={styles.textContent}>
+            <View style={styles.nameRow}>
+              <Text style={styles.nameText}>{name}</Text>
+              {isPinned ? (
+                <View
+                  accessibilityLabel='Home stop pinned'
+                  accessibilityRole='image'
+                  style={styles.pinnedBadge}
+                >
+                  <AppIcon name='home' size={12} color={theme.colors.text.primary} />
+                </View>
+              ) : null}
+            </View>
+            {distanceLabel ? <Text style={styles.metaText}>{distanceLabel}</Text> : null}
+          </View>
+
+          <View
+            style={[
+              styles.codeBadge,
+              {
+                backgroundColor: `${transportColor}${Math.round(
+                  theme.glass.codeBadgeBgOpacity * 255
+                )
+                  .toString(16)
+                  .padStart(2, '0')}`,
+              },
+            ]}
+          >
+            <Text style={[styles.codeText, { color: transportColor }]}>{code}</Text>
+          </View>
+        </View>
       </View>
     </Pressable>
   );
@@ -82,11 +115,15 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.card,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
+    backgroundColor: theme.colors.card.bg,
     padding: theme.spacing.md,
+    minHeight: theme.layout.minTouchTarget,
+    overflow: 'hidden',
+  },
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    minHeight: theme.layout.minTouchTarget,
   },
   iconBadge: {
     width: theme.glass.iconBadgeSize,
@@ -95,10 +132,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  textContent: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   codeBadge: {
     borderRadius: theme.radius.badge,
     paddingHorizontal: theme.spacing.xs,
     paddingVertical: theme.spacing.xs,
+    alignSelf: 'flex-start',
   },
   codeText: {
     fontSize: theme.typography.xs.fontSize,
@@ -109,6 +156,21 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: theme.typography.lg.fontSize,
     fontWeight: theme.typography.lg.fontWeight,
+  },
+  pinnedBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: `${theme.colors.status.realtime}44`,
+    backgroundColor: `${theme.colors.status.realtime}22`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metaText: {
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: theme.typography.sm.fontWeight,
   },
   pressed: {
     opacity: 0.7,

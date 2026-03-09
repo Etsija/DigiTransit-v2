@@ -4,6 +4,7 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 import { View } from 'react-native';
 
+import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { DepartureCard } from '@/shared/components/departure-card';
 import { DepartureNotificationDialog } from '@/shared/components/departure-notification-dialog';
 import { ErrorBanner } from '@/shared/components/error-banner';
@@ -20,6 +21,14 @@ jest.mock('expo-glass-effect', () => {
   };
 });
 
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: (props: any) => <View {...props} />,
+  };
+});
+
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
@@ -33,14 +42,46 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 describe('Transport & Status UI Components', () => {
+  describe('CoordinatesBar', () => {
+    it('renders the resolved address and coordinates when location is available', () => {
+      const { getByText } = render(
+        <CoordinatesBar
+          latitude={60.171}
+          longitude={24.94}
+          resolvedAddress='Asema-aukio 1, Helsinki'
+          isFixed
+        />
+      );
+
+      expect(getByText('Asema-aukio 1, Helsinki')).toBeTruthy();
+      expect(getByText('60.171°N, 24.940°E')).toBeTruthy();
+    });
+
+    it('renders the unavailable state when no location fix exists', () => {
+      const { getByText, queryByText } = render(
+        <CoordinatesBar latitude={null} longitude={null} isFixed={false} />
+      );
+
+      expect(getByText('Location unavailable')).toBeTruthy();
+      expect(queryByText(/°N/)).toBeNull();
+    });
+  });
+
   describe('StopCard', () => {
     it('renders the stop name and code', () => {
       const { getByText } = render(
-        <StopCard name='Hyvinkään asema' code='HKI:1234' transportMode='train' onPress={() => {}} />
+        <StopCard
+          name='Hyvinkään asema'
+          code='HKI:1234'
+          transportMode='train'
+          distanceLabel='64 metres'
+          onPress={() => {}}
+        />
       );
 
       expect(getByText('Hyvinkään asema')).toBeTruthy();
       expect(getByText('HKI:1234')).toBeTruthy();
+      expect(getByText('64 metres')).toBeTruthy();
     });
 
     it('renders the transport icon for bus mode', () => {
@@ -75,6 +116,24 @@ describe('Transport & Status UI Components', () => {
 
       expect(getByRole('button').props.accessibilityLabel).toBe(
         'Keskusta, bus, stop, V:5678, 64 metres'
+      );
+    });
+
+    it('renders a home badge for pinned stops', () => {
+      const { getByLabelText, getByRole } = render(
+        <StopCard
+          name='Keskusta'
+          code='V:5678'
+          transportMode='bus'
+          distanceLabel='64 metres'
+          isPinned
+          onPress={() => {}}
+        />
+      );
+
+      expect(getByLabelText('Home stop pinned')).toBeTruthy();
+      expect(getByRole('button').props.accessibilityLabel).toBe(
+        'Keskusta, bus, stop, V:5678, 64 metres, home pinned'
       );
     });
   });
@@ -132,6 +191,21 @@ describe('Transport & Status UI Components', () => {
       );
 
       expect(getByLabelText('14:35, route 7A to Keskusta, Live GPS')).toBeTruthy();
+    });
+
+    it('renders a clock badge when a notification is scheduled', () => {
+      const { getByLabelText, getByText } = render(
+        <DepartureCard
+          routeShortName='600'
+          headsign='Helsinki Airport'
+          departureTime='14:51'
+          status='realtime'
+          notificationScheduled
+        />
+      );
+
+      expect(getByText('600')).toBeTruthy();
+      expect(getByLabelText('Notification scheduled')).toBeTruthy();
     });
   });
 

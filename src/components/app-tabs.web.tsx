@@ -25,6 +25,7 @@ export default function AppTabs() {
         <Stack.Screen name='map' />
         <Stack.Screen name='stops' />
         <Stack.Screen name='settings' />
+        <Stack.Screen name='showcase' />
         <Stack.Screen name='stop/[stopId]' />
       </Stack>
 
