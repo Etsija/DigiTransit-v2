@@ -1,12 +1,18 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Compatibility bridge — re-exports legacy token names from the canonical
+ * design-system module at src/shared/theme/theme.ts.
+ *
+ * Existing imports (Colors, Spacing, Fonts, etc.) continue to work.
+ * New code should import from '@/shared/theme/theme' directly.
  */
 
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
+import { theme } from '@/shared/theme/theme';
+
+// Legacy Colors shape used by useTheme / ThemedView / ThemedText
 export const Colors = {
   light: {
     text: '#000000',
@@ -26,40 +32,17 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+export const Fonts = theme.fonts;
 
 export const Spacing = {
   half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
+  one: theme.spacing.xs,
+  two: theme.spacing.sm,
+  three: theme.spacing.lg,
+  four: theme.spacing.xl,
+  five: theme.spacing['2xl'],
   six: 64,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = theme.layout.maxContentWidth;
