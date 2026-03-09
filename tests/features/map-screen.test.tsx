@@ -25,22 +25,16 @@ jest.mock('expo-glass-effect', () => {
   };
 });
 
-jest.mock('react-native-maps', () => {
+jest.mock('@/core/platform/maps/map-view', () => {
   const React = require('react');
   const { View } = require('react-native');
 
-  const MockMapView = React.forwardRef((props: any, ref: any) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
-    }));
-
-    return <View ref={ref} {...props} />;
-  });
-  MockMapView.displayName = 'MapView';
+  const MockPlatformMapView = jest.fn((props: any) => (
+    <View testID='live-map-surface' {...props} />
+  ));
 
   return {
-    __esModule: true,
-    default: MockMapView,
+    PlatformMapView: MockPlatformMapView,
   };
 });
 
@@ -54,11 +48,16 @@ jest.mock('@/core/store/settings.store', () => ({
 
 describe('MapScreen', () => {
   const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+  const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+  const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   const { useDeviceLocation } = jest.requireMock('@/features/map/hooks/use-device-location') as {
     useDeviceLocation: jest.Mock;
   };
   const { useSettingsStore } = jest.requireMock('@/core/store/settings.store') as {
     useSettingsStore: jest.Mock;
+  };
+  const { PlatformMapView } = jest.requireMock('@/core/platform/maps/map-view') as {
+    PlatformMapView: jest.Mock;
   };
 
   beforeEach(() => {
@@ -77,6 +76,11 @@ describe('MapScreen', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    consoleInfoSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
   });
 
   it('renders live coordinates from the device location state', async () => {
@@ -131,10 +135,54 @@ describe('MapScreen', () => {
       expect(getByText('Enable location in settings')).toBeTruthy();
     });
 
-    expect(getByTestId('live-map-surface').props.initialRegion).toMatchObject({
-      latitude: 60.1699,
-      longitude: 24.9384,
+    expect(getByTestId('live-map-surface').props.latitude).toBe(60.1699);
+    expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
+    expect(getByTestId('live-map-surface').props.showUserLocation).toBe(false);
+
+    fireEvent.press(getByRole('button', { name: 'Open app settings' }));
+
+    expect(openSettingsSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders through the shared platform adapter boundary', () => {
+    const { getByTestId } = render(<MapScreen />);
+
+    expect(PlatformMapView).toHaveBeenCalled();
+    expect(getByTestId('live-map-surface').props.latitude).toBe(60.1699);
+    expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
+    expect(getByTestId('live-map-surface').props.showUserLocation).toBe(true);
+  });
+
+  it('measures when the map becomes visible', () => {
+    render(<MapScreen />);
+
+    const firstCall = PlatformMapView.mock.calls[0]?.[0];
+    expect(firstCall.onMapReady).toEqual(expect.any(Function));
+
+    firstCall.onMapReady();
+
+    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[map\] visible in \d+ms$/));
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+  });
+
+  it('passes the Helsinki fallback coordinates to the shared adapter when device coordinates are missing', async () => {
+    useDeviceLocation.mockReturnValue({
+      coordinates: null,
+      permission: { status: 'denied', canAskAgain: false },
+      isFixed: false,
+      isLoading: false,
+      error: null,
     });
+
+    const { getByRole, getByTestId, getByText } = render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Enable location in settings')).toBeTruthy();
+    });
+
+    expect(getByTestId('live-map-surface').props.latitude).toBe(60.1699);
+    expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
+    expect(getByTestId('live-map-surface').props.showUserLocation).toBe(false);
 
     fireEvent.press(getByRole('button', { name: 'Open app settings' }));
 
