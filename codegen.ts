@@ -13,13 +13,15 @@ const processRef = (globalThis as { process?: ProcessLike }).process;
 loadEnv('.env');
 
 function loadEnv(path: string): void {
-  processRef?.loadEnvFile?.(path);
+  const envPath = resolve(path);
+
+  if (existsSync(envPath)) {
+    processRef?.loadEnvFile?.(path);
+  }
 
   if (!processRef?.env || processRef.env.EXPO_PUBLIC_DIGITRANSIT_API_KEY) {
     return;
   }
-
-  const envPath = resolve(path);
 
   if (!existsSync(envPath)) {
     return;

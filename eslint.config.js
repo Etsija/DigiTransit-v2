@@ -7,6 +7,12 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    ignores: ['dist/*', 'src/generated/*'],
+    ignores: ['dist/*'],
+  },
+  {
+    files: ['src/generated/**/*.{ts,tsx}'],
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off',
+    },
   },
 ]);

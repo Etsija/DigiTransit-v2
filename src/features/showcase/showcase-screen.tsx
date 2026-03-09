@@ -14,6 +14,7 @@ import { StopCard } from '@/shared/components/stop-card';
 import { StopHeaderCard } from '@/shared/components/stop-header-card';
 import { theme } from '@/shared/theme/theme';
 import { buildSettingsHref } from '@/types/navigation';
+import { LiveApiSection } from './live-api-section';
 import {
   showcaseDepartureVariants,
   showcaseEmptyStates,
@@ -21,7 +22,6 @@ import {
   showcaseMarkerVariants,
   showcaseStopVariants,
 } from './mock-data';
-import { LiveApiSection } from './live-api-section';
 
 export function ShowcaseScreen() {
   const router = useRouter();

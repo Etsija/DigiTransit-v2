@@ -6,11 +6,13 @@ import type { TransportMode } from '@/shared/theme/theme';
 
 const transportModeSchema = z.enum(['bus', 'tram', 'train', 'metro', 'ferry']);
 
-const currentHomeStopSchema = z.object({
-  gtfsId: z.string().min(1),
-  name: z.string().min(1),
-  transportMode: transportModeSchema.nullable().default(null),
-}).strict();
+const currentHomeStopSchema = z
+  .object({
+    gtfsId: z.string().min(1),
+    name: z.string().min(1),
+    transportMode: transportModeSchema.nullable().default(null),
+  })
+  .strict();
 
 const legacyHomeStopSchema = z
   .object({

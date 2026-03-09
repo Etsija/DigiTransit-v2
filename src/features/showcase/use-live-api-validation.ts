@@ -1,15 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { queryKeys } from '@/core/api/query-keys';
 import { requestGraphql } from '@/core/api/graphql-client';
+import { queryKeys } from '@/core/api/query-keys';
 import {
   mapGraphqlModeToTransportMode,
   mapGraphqlTransitModeToTransportMode,
 } from '@/core/utils/transport-mode';
 import {
   StopDeparturesQueryDocument,
-  type StopDeparturesQueryQuery,
   StopsNearbyQueryDocument,
+  type StopDeparturesQueryQuery,
   type StopsNearbyQueryQuery,
 } from '@/generated/graphql';
 
@@ -45,11 +45,7 @@ function getFirstValidStop(data: StopsNearbyQueryQuery | undefined): ValidNearby
     const node = edge?.node;
     const stop = node?.stop;
 
-    if (
-      stop?.gtfsId &&
-      stop.name.trim().length > 0 &&
-      typeof node?.distance === 'number'
-    ) {
+    if (stop?.gtfsId && stop.name.trim().length > 0 && typeof node?.distance === 'number') {
       return {
         distance: node.distance,
         stop: stop as NearbyStop,
@@ -60,14 +56,16 @@ function getFirstValidStop(data: StopsNearbyQueryQuery | undefined): ValidNearby
   return null;
 }
 
-function isDepartureValid(departure: ValidDeparture | null | undefined): departure is ValidDeparture {
+function isDepartureValid(
+  departure: ValidDeparture | null | undefined
+): departure is ValidDeparture {
   return Boolean(
     departure &&
-      typeof departure.scheduledDeparture === 'number' &&
-      departure.serviceDay != null &&
-      departure.realtimeState != null &&
-      departure.headsign?.trim() &&
-      departure.trip?.route.shortName?.trim()
+    typeof departure.scheduledDeparture === 'number' &&
+    departure.serviceDay != null &&
+    departure.realtimeState != null &&
+    departure.headsign?.trim() &&
+    departure.trip?.route.shortName?.trim()
   );
 }
 
@@ -87,7 +85,9 @@ export function getResolvedStopModes(stop: Pick<NearbyStop, 'vehicleMode' | 'pat
   return Array.from(resolvedModes);
 }
 
-export function getResolvedTransportModes(stop: Pick<NearbyStop, 'vehicleMode' | 'patterns'>): string[] {
+export function getResolvedTransportModes(
+  stop: Pick<NearbyStop, 'vehicleMode' | 'patterns'>
+): string[] {
   const resolvedModes = new Set<string>();
   const stopMode = mapGraphqlModeToTransportMode(stop.vehicleMode);
 

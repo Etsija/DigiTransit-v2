@@ -5,8 +5,8 @@ import { render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
 import { requestGraphql } from '@/core/api/graphql-client';
-import { StopDeparturesQueryDocument, StopsNearbyQueryDocument } from '@/generated/graphql';
 import { LiveApiSection } from '@/features/showcase/live-api-section';
+import { StopDeparturesQueryDocument, StopsNearbyQueryDocument } from '@/generated/graphql';
 
 jest.mock('@/core/api/graphql-client', () => ({
   requestGraphql: jest.fn(),
@@ -56,35 +56,35 @@ describe('LiveApiSection', () => {
     expect(screen.getByText('Running live DigiTransit queries...')).toBeTruthy();
 
     nearbyDeferred.resolve({
-        stopsByRadius: {
-          edges: [
-            {
-              node: {
-                distance: 120,
-                stop: {
-                  gtfsId: 'HSL:1001',
-                  name: 'Asema-aukio',
-                  code: '1001',
-                  zoneId: 'A',
-                  vehicleMode: 'BUS',
-                  parentStation: null,
-                  patterns: [
-                    {
-                      directionId: 0,
-                      route: {
-                        shortName: '1',
-                        longName: 'Central Station',
-                        mode: 'BUS',
-                      },
-                      stops: [],
+      stopsByRadius: {
+        edges: [
+          {
+            node: {
+              distance: 120,
+              stop: {
+                gtfsId: 'HSL:1001',
+                name: 'Asema-aukio',
+                code: '1001',
+                zoneId: 'A',
+                vehicleMode: 'BUS',
+                parentStation: null,
+                patterns: [
+                  {
+                    directionId: 0,
+                    route: {
+                      shortName: '1',
+                      longName: 'Central Station',
+                      mode: 'BUS',
                     },
-                  ],
-                },
+                    stops: [],
+                  },
+                ],
               },
             },
-          ],
-        },
-      });
+          },
+        ],
+      },
+    });
 
     await waitFor(() => {
       expect(mockRequestGraphql).toHaveBeenNthCalledWith(
@@ -95,25 +95,25 @@ describe('LiveApiSection', () => {
     });
 
     departuresDeferred.resolve({
-        stop: {
-          name: 'Asema-aukio',
-          stoptimesWithoutPatterns: [
-            {
-              scheduledDeparture: 14 * 3600 + 35 * 60,
-              realtimeDeparture: 14 * 3600 + 36 * 60,
-              realtime: true,
-              realtimeState: 'UPDATED',
-              serviceDay: 1_710_028_800,
-              headsign: 'Kamppi',
-              trip: {
-                route: {
-                  shortName: '7A',
-                },
+      stop: {
+        name: 'Asema-aukio',
+        stoptimesWithoutPatterns: [
+          {
+            scheduledDeparture: 14 * 3600 + 35 * 60,
+            realtimeDeparture: 14 * 3600 + 36 * 60,
+            realtime: true,
+            realtimeState: 'UPDATED',
+            serviceDay: 1_710_028_800,
+            headsign: 'Kamppi',
+            trip: {
+              route: {
+                shortName: '7A',
               },
             },
-          ],
-        },
-      });
+          },
+        ],
+      },
+    });
 
     await waitFor(() => {
       expect(mockRequestGraphql).toHaveBeenNthCalledWith(
@@ -140,8 +140,14 @@ describe('LiveApiSection', () => {
 
     const screen = renderWithQueryClient(<LiveApiSection hasApiKey />);
 
-    expect(await screen.findByText('Authentication failed for the live DigiTransit query.')).toBeTruthy();
-    expect(screen.getByText('Check EXPO_PUBLIC_DIGITRANSIT_API_KEY and the digitransit-subscription-key header.')).toBeTruthy();
+    expect(
+      await screen.findByText('Authentication failed for the live DigiTransit query.')
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Check EXPO_PUBLIC_DIGITRANSIT_API_KEY and the digitransit-subscription-key header.'
+      )
+    ).toBeTruthy();
   });
 
   it('shows the same authentication guidance for 401-style auth failures', async () => {
@@ -153,15 +159,25 @@ describe('LiveApiSection', () => {
 
     const screen = renderWithQueryClient(<LiveApiSection hasApiKey />);
 
-    expect(await screen.findByText('Authentication failed for the live DigiTransit query.')).toBeTruthy();
-    expect(screen.getByText('Check EXPO_PUBLIC_DIGITRANSIT_API_KEY and the digitransit-subscription-key header.')).toBeTruthy();
+    expect(
+      await screen.findByText('Authentication failed for the live DigiTransit query.')
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Check EXPO_PUBLIC_DIGITRANSIT_API_KEY and the digitransit-subscription-key header.'
+      )
+    ).toBeTruthy();
   });
 
   it('shows an explicit missing-api-key diagnostic without making network requests', async () => {
     const screen = renderWithQueryClient(<LiveApiSection hasApiKey={false} />);
 
-    expect(await screen.findByText('Authentication failed for the live DigiTransit query.')).toBeTruthy();
-    expect(screen.getByText('Set EXPO_PUBLIC_DIGITRANSIT_API_KEY before using the Live API validator.')).toBeTruthy();
+    expect(
+      await screen.findByText('Authentication failed for the live DigiTransit query.')
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Set EXPO_PUBLIC_DIGITRANSIT_API_KEY before using the Live API validator.')
+    ).toBeTruthy();
     expect(mockRequestGraphql).not.toHaveBeenCalled();
   });
 
