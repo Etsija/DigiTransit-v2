@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import React from 'react';
 import { ActivityIndicator, FlatList, Linking, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { getAppErrorMessage } from '@/core/errors/app-error';
 import { useSettingsStore } from '@/core/store/settings.store';
 import { LocationDeniedState } from '@/features/map/components/location-denied-state';
 import {
@@ -29,6 +30,7 @@ type StopsScreenProps = {
 
 export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) {
   const hasRetriedPermissionPromptRef = React.useRef(false);
+  const insets = useSafeAreaInsets();
   const locationUpdateIntervalSeconds = useSettingsStore(
     (state) => state.locationUpdateIntervalSeconds
   );
@@ -66,6 +68,8 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
     !showLocationErrorState &&
     !showErrorEmptyState &&
     !hasStops;
+  const bottomContentInset =
+    insets.bottom + theme.layout.tabBarHeight + theme.spacing.xl + theme.spacing.sm;
 
   React.useEffect(() => {
     if (
@@ -105,7 +109,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
       <View style={styles.backdropTint} />
 
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingBottom: bottomContentInset }]}>
           <CoordinatesBar
             isFixed={location.isFixed}
             latitude={location.coordinates?.latitude ?? null}
@@ -185,7 +189,9 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
             {showErrorEmptyState ? (
               <EmptyState
                 title='Unable to load nearby stops'
-                message='Check your connection and try again. The Stops tab will recover automatically when data becomes available.'
+                message={`${getAppErrorMessage(
+                  nearbyStopsQuery.error
+                )} Check your connection and try again. The Stops tab will recover automatically when data becomes available.`}
               />
             ) : null}
 
@@ -200,7 +206,10 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
               <FlatList
                 data={stops}
                 keyExtractor={(item) => item.gtfsId}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[
+                  styles.listContent,
+                  { paddingBottom: bottomContentInset + theme.spacing.md },
+                ]}
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                   const routePatternsLabel = formatRoutePatternsLabel(item.routePatterns);

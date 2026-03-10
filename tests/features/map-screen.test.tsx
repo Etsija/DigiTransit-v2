@@ -13,6 +13,7 @@ jest.mock('react-native-safe-area-context', () => {
   SafeAreaView.displayName = 'SafeAreaView';
   return {
     SafeAreaView,
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
   };
 });
 
@@ -223,7 +224,7 @@ describe('MapScreen', () => {
 
     await waitFor(() => {
       expect(getByTestId('live-map-surface')).toBeTruthy();
-      expect(getByText('DigiTransit API unavailable')).toBeTruthy();
+      expect(getByText('Network error')).toBeTruthy();
     });
 
     expect(queryByText('No nearby stops found')).toBeNull();
@@ -242,7 +243,7 @@ describe('MapScreen', () => {
     const screen = render(<MapScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('DigiTransit API unavailable')).toBeTruthy();
+      expect(screen.getByText('Network error')).toBeTruthy();
     });
 
     useNearbyStops.mockReturnValue({

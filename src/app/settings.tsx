@@ -6,13 +6,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { DIGITRANSIT_API_KEY, DIGITRANSIT_API_URL } from '@/core/config/env';
 import { theme } from '@/shared/theme/theme';
 import { buildShowcaseHref } from '@/types/navigation';
+
+function maskApiKey(value: string) {
+  if (!value) {
+    return 'Missing';
+  }
+
+  if (value.length <= 8) {
+    return `${value.slice(0, 2)}...${value.slice(-2)}`;
+  }
+
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
   const versionTapCountRef = React.useRef(0);
   const appVersion = Constants.expoConfig?.version ?? '0.0.0';
+  const apiKeyFingerprint = maskApiKey(DIGITRANSIT_API_KEY);
+  const hasApiKey = DIGITRANSIT_API_KEY.length > 0;
 
   const handleVersionPress = () => {
     if (!__DEV__) {
@@ -38,6 +53,19 @@ export default function SettingsScreen() {
           <ThemedText themeColor='textSecondary'>
             Persisted settings work will continue here in later stories without changing the shell.
           </ThemedText>
+
+          <View style={styles.diagnosticsCard}>
+            <ThemedText type='subtitle'>Build diagnostics</ThemedText>
+            <ThemedText themeColor='textSecondary'>
+              DigiTransit URL: {DIGITRANSIT_API_URL}
+            </ThemedText>
+            <ThemedText themeColor='textSecondary'>
+              API key present: {hasApiKey ? 'Yes' : 'No'}
+            </ThemedText>
+            <ThemedText themeColor='textSecondary'>
+              API key fingerprint: {apiKeyFingerprint}
+            </ThemedText>
+          </View>
 
           {__DEV__ ? (
             <Pressable
@@ -81,10 +109,18 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: theme.layout.maxContentWidth,
     alignSelf: 'center',
-    justifyContent: 'center',
     flex: 1,
     paddingVertical: theme.spacing['2xl'],
     gap: theme.spacing.md,
+  },
+  diagnosticsCard: {
+    marginTop: theme.spacing.lg,
+    borderRadius: theme.radius.card,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
+    backgroundColor: theme.colors.card.bg,
+    padding: theme.spacing.md,
+    gap: theme.spacing.xs,
   },
   versionButton: {
     marginTop: theme.spacing.lg,

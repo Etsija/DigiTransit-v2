@@ -12,6 +12,7 @@ jest.mock('react-native-safe-area-context', () => {
   SafeAreaView.displayName = 'SafeAreaView';
   return {
     SafeAreaView,
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
   };
 });
 
@@ -348,7 +349,7 @@ describe('StopsScreen', () => {
       expect(screen.getByText('Unable to load nearby stops')).toBeTruthy();
       expect(
         screen.getByText(
-          'Check your connection and try again. The Stops tab will recover automatically when data becomes available.'
+          'Network error Check your connection and try again. The Stops tab will recover automatically when data becomes available.'
         )
       ).toBeTruthy();
     });

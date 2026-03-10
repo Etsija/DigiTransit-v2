@@ -13,7 +13,7 @@ describe('mapToAppError', () => {
 
     expect(mapToAppError(error)).toMatchObject({
       kind: 'permission',
-      message: 'DigiTransit API access was rejected.',
+      message: 'HTTP 401: DigiTransit API access was rejected.',
       retryable: false,
     });
   });

@@ -1,7 +1,8 @@
 import React, { useMemo, useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { getAppErrorMessage } from '@/core/errors/app-error';
 import { PlatformMapView } from '@/core/platform/maps/map-view';
 import { useSettingsStore } from '@/core/store/settings.store';
 import { LocationDeniedState } from '@/features/map/components/location-denied-state';
@@ -35,6 +36,7 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   const mapLoadStartedAtRef = useRef(getNow());
   const hasReportedMapReadyRef = useRef(false);
   const hasRetriedPermissionPromptRef = useRef(false);
+  const insets = useSafeAreaInsets();
   const locationUpdateIntervalSeconds = useSettingsStore(
     (state) => state.locationUpdateIntervalSeconds
   );
@@ -60,6 +62,8 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
       }),
     [homeStopId, nearbyStopsQuery.data, onSelectStop, searchRadiusMeters]
   );
+  const bottomOverlayInset =
+    insets.bottom + theme.layout.tabBarHeight + theme.spacing.xl + theme.spacing.sm;
   const handleMapReady = () => {
     if (hasReportedMapReadyRef.current) {
       return;
@@ -114,14 +118,16 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
       />
 
       <SafeAreaView pointerEvents='box-none' style={styles.safeArea}>
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { paddingBottom: bottomOverlayInset }]}>
           <CoordinatesBar
             isFixed={location.isFixed}
             latitude={location.coordinates?.latitude ?? null}
             longitude={location.coordinates?.longitude ?? null}
           />
 
-          {nearbyStopsQuery.isError ? <ErrorBanner message='DigiTransit API unavailable' /> : null}
+          {nearbyStopsQuery.isError ? (
+            <ErrorBanner message={getAppErrorMessage(nearbyStopsQuery.error)} />
+          ) : null}
 
           {showDeniedState ? (
             <LocationDeniedState
