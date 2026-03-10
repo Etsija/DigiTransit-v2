@@ -58,6 +58,23 @@ jest.mock('@/features/stops/stops-screen', () => ({
   },
 }));
 
+jest.mock('@/features/departures/departures-screen', () => ({
+  DeparturesScreen: ({ stopId, onBack }: { stopId: string; onBack: () => void }) => {
+    const React = require('react');
+    const { Pressable, Text, View } = require('react-native');
+
+    return (
+      <View>
+        <Text>Departures</Text>
+        <Text>{`Stop ID: ${stopId}`}</Text>
+        <Pressable accessibilityRole='button' accessibilityLabel='Back' onPress={onBack}>
+          <Text>Back</Text>
+        </Pressable>
+      </View>
+    );
+  },
+}));
+
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(
     (

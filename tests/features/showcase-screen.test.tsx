@@ -111,7 +111,9 @@ describe('ShowcaseScreen', () => {
     expect(getByText('600')).toBeTruthy();
     expect(getByLabelText('Notification scheduled')).toBeTruthy();
     expect(
-      getAllByLabelText('Asema-aukio 1, Helsinki, bus, stop, HSL:1001, 120 m').length
+      getAllByLabelText(
+        'Asema-aukio 1, Helsinki, bus, stop, HSL:1001, Zone A, towards Kamppi, patterns 600 to Helsinki Airport, 615'
+      ).length
     ).toBeGreaterThan(0);
     expect(getByLabelText('Bus marker tapped')).toBeTruthy();
   });

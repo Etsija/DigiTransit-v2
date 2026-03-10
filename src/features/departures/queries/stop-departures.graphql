@@ -2,6 +2,20 @@
 query StopDeparturesQuery($id: String!) {
   stop(id: $id) {
     name
+    code
+    zoneId
+    vehicleMode
+    direction
+    patterns {
+      name
+      headsign
+      directionId
+      route {
+        shortName
+        longName
+        mode
+      }
+    }
     stoptimesWithoutPatterns {
       scheduledDeparture
       realtimeDeparture
