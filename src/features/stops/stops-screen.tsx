@@ -94,11 +94,14 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../../assets/images/logo-glow.png')}
+        source={require('../../../assets/images/map-backdrop.png')}
+        blurRadius={1}
         contentFit='cover'
+        contentPosition='center'
         testID='stops-static-backdrop'
         style={styles.backdrop}
       />
+      <View style={styles.backdropScrim} />
       <View style={styles.backdropTint} />
 
       <SafeAreaView style={styles.safeArea}>
@@ -240,11 +243,15 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.22,
+    opacity: 0.82,
+  },
+  backdropScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
   },
   backdropTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(4, 7, 12, 0.78)',
+    backgroundColor: 'rgba(4, 7, 12, 0.44)',
   },
   safeArea: {
     flex: 1,
@@ -259,7 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.card,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
-    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
     overflow: 'hidden',
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
