@@ -22,6 +22,7 @@ describe('Design Token System', () => {
       expect(theme.colors.status.realtime).toBe('#4ADE80');
       expect(theme.colors.status.estimated).toBe('#FBBF24');
       expect(theme.colors.status.error).toBe('#F87171');
+      expect(theme.colors.status.homeStop).toBe('#F43F5E');
     });
 
     it('exposes glass card surface tokens', () => {

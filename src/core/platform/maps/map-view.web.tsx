@@ -68,6 +68,7 @@ export function syncMapboxMarkers(map: mapboxgl.Map, markers: PlatformMapMarker[
     const root = createMarkerRoot(element);
     root.render(
       <MapMarker
+        isHomeStop={markerData.isHomeStop}
         label={markerData.accessibilityLabel ?? markerData.id}
         onPress={markerData.onPress}
         size={markerData.size}

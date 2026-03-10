@@ -54,7 +54,7 @@ development_status:
   2-2-map-view-with-dark-tile-style: done
   2-3-nearby-stop-markers-on-map: done
   2-4-nearby-stops-list: done
-  2-5-home-stop-pinning: backlog
+  2-5-home-stop-pinning: done
   2-6-map-tap-navigation-and-error-states: backlog
   epic-2-retrospective: optional
 

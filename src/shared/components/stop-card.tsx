@@ -15,6 +15,7 @@ export type StopCardProps = {
   secondaryLabel?: string;
   isPinned?: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
 };
 
 export function StopCard({
@@ -27,7 +28,10 @@ export function StopCard({
   secondaryLabel,
   isPinned = false,
   onPress,
+  onLongPress,
 }: StopCardProps) {
+  const skipNextPressRef = React.useRef(false);
+  const resetSkipPressTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const resolvedTransportMode = transportMode ?? 'bus';
   const transportColor = transportMode
     ? theme.colors.transport[transportMode]
@@ -56,9 +60,52 @@ export function StopCard({
     accessibilityParts.push('home pinned');
   }
 
+  const handleLongPress = () => {
+    skipNextPressRef.current = true;
+    onLongPress?.();
+  };
+
+  const handlePress = () => {
+    if (skipNextPressRef.current) {
+      skipNextPressRef.current = false;
+      if (resetSkipPressTimeoutRef.current) {
+        clearTimeout(resetSkipPressTimeoutRef.current);
+        resetSkipPressTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    onPress();
+  };
+
+  const handlePressOut = () => {
+    if (!skipNextPressRef.current) {
+      return;
+    }
+
+    if (resetSkipPressTimeoutRef.current) {
+      clearTimeout(resetSkipPressTimeoutRef.current);
+    }
+
+    resetSkipPressTimeoutRef.current = setTimeout(() => {
+      skipNextPressRef.current = false;
+      resetSkipPressTimeoutRef.current = null;
+    }, 0);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (resetSkipPressTimeoutRef.current) {
+        clearTimeout(resetSkipPressTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <Pressable
-      onPress={onPress}
+      onLongPress={handleLongPress}
+      onPress={handlePress}
+      onPressOut={handlePressOut}
       accessibilityRole='button'
       accessibilityLabel={accessibilityParts.join(', ')}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}

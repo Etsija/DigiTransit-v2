@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import type { StateStorage } from 'zustand/middleware';
 import { createStore } from 'zustand/vanilla';
 
+import { createSettingsPersistStorage } from '@/core/store/home-stop-storage';
 import { migrateSettingsState, resolvePersistedSettingsState } from '@/core/store/migrations';
 import { SETTINGS_STORAGE_KEY, SETTINGS_STORAGE_VERSION } from '@/core/store/storage-keys';
 import { createJSONStorage, persist } from '@/core/store/zustand-middleware-shim';
@@ -54,6 +55,7 @@ function partializeSettingsState(state: SettingsStore): PersistedSettings {
 }
 
 export function createSettingsStore(storage: StateStorage = getDefaultSettingsStorage()) {
+  const persistStorage = createSettingsPersistStorage(storage);
   const store = createStore<SettingsStore>()(
     persist(
       (set) => ({
@@ -75,7 +77,7 @@ export function createSettingsStore(storage: StateStorage = getDefaultSettingsSt
       {
         name: SETTINGS_STORAGE_KEY,
         version: SETTINGS_STORAGE_VERSION,
-        storage: createJSONStorage(() => storage),
+        storage: createJSONStorage(() => persistStorage),
         partialize: partializeSettingsState,
         migrate: migrateSettingsState,
         merge: (persistedState, currentState) => ({

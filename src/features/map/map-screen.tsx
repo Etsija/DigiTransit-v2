@@ -6,7 +6,10 @@ import { PlatformMapView } from '@/core/platform/maps/map-view';
 import { useSettingsStore } from '@/core/store/settings.store';
 import { LocationDeniedState } from '@/features/map/components/location-denied-state';
 import { HELSINKI_FALLBACK_COORDINATES } from '@/features/map/constants';
-import { useDeviceLocation } from '@/features/map/hooks/use-device-location';
+import {
+  requestDeviceLocationPermission,
+  useDeviceLocation,
+} from '@/features/map/hooks/use-device-location';
 import { createMapStopMarkers } from '@/features/map/hooks/use-map-stop-markers';
 import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
@@ -29,10 +32,12 @@ function getNow() {
 export function MapScreen({ isActive = true }: MapScreenProps) {
   const mapLoadStartedAtRef = useRef(getNow());
   const hasReportedMapReadyRef = useRef(false);
+  const hasRetriedPermissionPromptRef = useRef(false);
   const locationUpdateIntervalSeconds = useSettingsStore(
     (state) => state.locationUpdateIntervalSeconds
   );
   const searchRadiusMeters = useSettingsStore((state) => state.searchRadiusMeters);
+  const homeStopId = useSettingsStore((state) => state.homeStop?.gtfsId ?? null);
   const location = useDeviceLocation({
     intervalSeconds: locationUpdateIntervalSeconds,
     isActive,
@@ -45,6 +50,7 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
     enabled: isActive && Boolean(location.coordinates),
   });
   const markers = createMapStopMarkers(nearbyStopsQuery.data ?? [], {
+    homeStopId,
     maxDistanceMeters: searchRadiusMeters,
   });
   const handleMapReady = () => {
@@ -66,6 +72,30 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
     }
   };
 
+  React.useEffect(() => {
+    if (
+      location.permission.status === 'granted' ||
+      (!location.permission.canAskAgain && location.hasRequestedPermission)
+    ) {
+      hasRetriedPermissionPromptRef.current = false;
+      return;
+    }
+
+    if (
+      isActive &&
+      location.permission.status === 'denied' &&
+      !hasRetriedPermissionPromptRef.current
+    ) {
+      hasRetriedPermissionPromptRef.current = true;
+      void requestDeviceLocationPermission();
+    }
+  }, [
+    isActive,
+    location.hasRequestedPermission,
+    location.permission.canAskAgain,
+    location.permission.status,
+  ]);
+
   return (
     <View style={styles.container}>
       <PlatformMapView
@@ -85,7 +115,11 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
           />
 
           {showDeniedState ? (
-            <LocationDeniedState onOpenSettings={() => void Linking.openSettings()} />
+            <LocationDeniedState
+              canRequestAgain={location.permission.canAskAgain || !location.hasRequestedPermission}
+              onOpenSettings={() => void Linking.openSettings()}
+              onRequestPermission={() => void requestDeviceLocationPermission()}
+            />
           ) : null}
         </View>
       </SafeAreaView>

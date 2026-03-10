@@ -42,6 +42,7 @@ jest.mock('@/features/map/hooks/use-device-location', () => ({
   useDeviceLocation: jest.fn(() => ({
     coordinates: { latitude: 60.1699, longitude: 24.9384 },
     permission: { status: 'granted', canAskAgain: true },
+    hasRequestedPermission: true,
     isFixed: true,
     isLoading: false,
     error: null,

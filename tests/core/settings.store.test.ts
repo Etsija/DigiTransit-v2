@@ -27,6 +27,10 @@ async function hydrateStore(store: ReturnType<typeof createSettingsStore>) {
   await store.persist.rehydrate();
 }
 
+async function readStorageEntry(storage: StateStorage, key: string) {
+  return await storage.getItem(key);
+}
+
 describe('settings store', () => {
   it('returns the default settings on first launch', async () => {
     const storage = createMemoryStorage();
@@ -67,6 +71,11 @@ describe('settings store', () => {
           settingsVersion: SETTINGS_STORAGE_VERSION,
         },
         version: SETTINGS_STORAGE_VERSION,
+      }),
+      [HOME_STOP_STORAGE_KEY]: JSON.stringify({
+        gtfsId: 'HSL:1234',
+        name: 'Kamppi',
+        vehicleType: 0,
       }),
     });
 
@@ -277,6 +286,114 @@ describe('settings store', () => {
     expect(persistedPayload.state.locationUpdateIntervalSeconds).toBe(25);
     expect(persistedPayload.state.latitude).toBeUndefined();
     expect(persistedPayload.state.longitude).toBeUndefined();
+  });
+
+  it('writes the canonical home stop to HOME_STOP_STORAGE_KEY without duplicating it in settings', async () => {
+    const storage = createMemoryStorage();
+    const store = createSettingsStore(storage);
+
+    await hydrateStore(store);
+
+    store.getState().updateSettings({
+      homeStop: {
+        gtfsId: 'HSL:1002',
+        name: 'Central station',
+        transportMode: 'tram',
+      },
+    });
+
+    await Promise.resolve();
+
+    const persistedSettings = JSON.parse(
+      (await readStorageEntry(storage, SETTINGS_STORAGE_KEY)) as string
+    );
+    const persistedHomeStop = JSON.parse(
+      (await readStorageEntry(storage, HOME_STOP_STORAGE_KEY)) as string
+    );
+
+    expect(persistedSettings.state.homeStop).toBeUndefined();
+    expect(persistedHomeStop).toEqual({
+      gtfsId: 'HSL:1002',
+      name: 'Central station',
+      transportMode: 'tram',
+    });
+  });
+
+  it('hydrates home stop from the canonical home-stop storage key', async () => {
+    const storage = createMemoryStorage({
+      [SETTINGS_STORAGE_KEY]: JSON.stringify({
+        state: {
+          searchRadiusMeters: 500,
+          locationUpdateIntervalSeconds: 30,
+          stopsPollingIntervalSeconds: 45,
+          departuresPollingIntervalSeconds: 15,
+          pushNotificationsEnabled: true,
+          notificationLeadTimeMinutes: 5,
+          settingsVersion: SETTINGS_STORAGE_VERSION,
+        },
+        version: SETTINGS_STORAGE_VERSION,
+      }),
+      [HOME_STOP_STORAGE_KEY]: JSON.stringify({
+        gtfsId: 'HSL:4321',
+        name: 'Pasila',
+        transportMode: 'train',
+      }),
+    });
+
+    const store = createSettingsStore(storage);
+
+    await hydrateStore(store);
+
+    expect(store.getState().homeStop).toEqual({
+      gtfsId: 'HSL:4321',
+      name: 'Pasila',
+      transportMode: 'train',
+    });
+  });
+
+  it('migrates legacy embedded homeStop data into the canonical storage key during hydration', async () => {
+    const storage = createMemoryStorage({
+      [SETTINGS_STORAGE_KEY]: JSON.stringify({
+        state: {
+          searchRadiusMeters: 250,
+          locationUpdateIntervalSeconds: 20,
+          stopsPollingIntervalSeconds: 20,
+          departuresPollingIntervalSeconds: 10,
+          homeStop: {
+            gtfsId: 'HSL:5678',
+            name: 'Hakaniemi',
+            vehicleType: 0,
+          },
+          pushNotificationsEnabled: false,
+          notificationLeadTimeMinutes: 10,
+          settingsVersion: SETTINGS_STORAGE_VERSION,
+        },
+        version: SETTINGS_STORAGE_VERSION,
+      }),
+    });
+    const store = createSettingsStore(storage);
+
+    await hydrateStore(store);
+
+    expect(store.getState().homeStop).toEqual({
+      gtfsId: 'HSL:5678',
+      name: 'Hakaniemi',
+      transportMode: 'tram',
+    });
+
+    const persistedSettings = JSON.parse(
+      (await readStorageEntry(storage, SETTINGS_STORAGE_KEY)) as string
+    );
+    const persistedHomeStop = JSON.parse(
+      (await readStorageEntry(storage, HOME_STOP_STORAGE_KEY)) as string
+    );
+
+    expect(persistedSettings.state.homeStop).toBeUndefined();
+    expect(persistedHomeStop).toEqual({
+      gtfsId: 'HSL:5678',
+      name: 'Hakaniemi',
+      transportMode: 'tram',
+    });
   });
 
   it('exposes the reserved storage keys', () => {

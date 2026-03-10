@@ -114,6 +114,7 @@ export function PlatformMapView({
           tracksViewChanges={tracksViewChanges}
         >
           <MapMarker
+            isHomeStop={marker.isHomeStop}
             label={marker.accessibilityLabel ?? marker.id}
             size={marker.size}
             transportMode={marker.transportMode}
