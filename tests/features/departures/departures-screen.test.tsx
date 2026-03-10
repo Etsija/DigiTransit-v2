@@ -33,6 +33,15 @@ jest.mock('expo-image', () => {
   };
 });
 
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  return {
+    LinearGradient: (props: any) => <View {...props} />,
+  };
+});
+
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');
   const { Text } = require('react-native');
@@ -58,55 +67,63 @@ describe('DeparturesScreen', () => {
   ) as {
     useStopDepartures: jest.Mock;
   };
-
-  beforeEach(() => {
-    useStopDepartures.mockReturnValue({
-      data: {
-        header: {
-          name: 'Central station',
-          code: '1001',
-          zoneLabel: 'Zone A',
-          transportMode: 'tram',
-          directionLabel: 'Munkkiniemi',
-          patternLabels: ['4 to Munkkiniemi', '7B'],
-        },
-        departures: [
-          {
-            scheduledDeparture: 120,
-            realtimeDeparture: 125,
-            realtime: true,
-            realtimeState: 'UPDATED',
-            serviceDay: 1_700_000_000,
-            headsign: 'Munkkiniemi',
-            routeShortName: '4',
-            displayDepartureEpochSeconds: 1_700_000_125,
-            displayTime: '22:15',
-            status: 'realtime',
-            statusLabel: 'Live GPS',
-            accessibilityLabel: '22:15, route 4 to Munkkiniemi, Live GPS',
-          },
-          {
-            scheduledDeparture: 180,
-            realtimeDeparture: 180,
-            realtime: false,
-            realtimeState: 'SCHEDULED',
-            serviceDay: 1_700_000_000,
-            headsign: 'Pasila',
-            routeShortName: '7B',
-            displayDepartureEpochSeconds: 1_700_000_180,
-            displayTime: '22:16',
-            status: 'estimated',
-            statusLabel: 'Scheduled',
-            accessibilityLabel: '22:16, route 7B to Pasila, Scheduled',
-          },
-        ],
+  const departureData = {
+    header: {
+      name: 'Central station',
+      code: '1001',
+      zoneLabel: 'Zone A',
+      transportMode: 'tram',
+      directionLabel: 'Munkkiniemi',
+      patternLabels: ['4 to Munkkiniemi', '7B'],
+    },
+    departures: [
+      {
+        scheduledDeparture: 120,
+        realtimeDeparture: 125,
+        realtime: true,
+        realtimeState: 'UPDATED',
+        serviceDay: 1_700_000_000,
+        headsign: 'Munkkiniemi',
+        routeShortName: '4',
+        displayDepartureEpochSeconds: 1_700_000_125,
+        displayTime: '22:15',
+        status: 'realtime',
+        statusLabel: 'Live GPS',
+        accessibilityLabel: '22:15, route 4 to Munkkiniemi, Live GPS',
       },
+      {
+        scheduledDeparture: 180,
+        realtimeDeparture: 180,
+        realtime: false,
+        realtimeState: 'SCHEDULED',
+        serviceDay: 1_700_000_000,
+        headsign: 'Pasila',
+        routeShortName: '7B',
+        displayDepartureEpochSeconds: 1_700_000_180,
+        displayTime: '22:16',
+        status: 'estimated',
+        statusLabel: 'Scheduled',
+        accessibilityLabel: '22:16, route 7B to Pasila, Scheduled',
+      },
+    ],
+  };
+
+  function createDepartureQueryState(
+    overrides: Partial<ReturnType<typeof useStopDepartures>> = {}
+  ) {
+    return {
+      data: departureData,
       error: null,
       isError: false,
       isFetching: false,
       isPending: false,
       status: 'success',
-    });
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    useStopDepartures.mockReturnValue(createDepartureQueryState());
   });
 
   afterEach(() => {
@@ -184,14 +201,16 @@ describe('DeparturesScreen', () => {
   });
 
   it('shows the shared API error banner when the initial stop fetch fails', async () => {
-    useStopDepartures.mockReturnValue({
-      data: null,
-      error: { kind: 'network', message: 'DigiTransit API unavailable', retryable: true },
-      isError: true,
-      isFetching: false,
-      isPending: false,
-      status: 'error',
-    });
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({
+        data: null,
+        error: { kind: 'network', message: 'DigiTransit API unavailable', retryable: true },
+        isError: true,
+        isFetching: false,
+        isPending: false,
+        status: 'error',
+      })
+    );
 
     const screen = render(
       <DeparturesScreen
@@ -206,5 +225,133 @@ describe('DeparturesScreen', () => {
     });
 
     expect(screen.getByText('DigiTransit API unavailable')).toBeTruthy();
+    expect(screen.queryByText('22:15')).toBeNull();
+  });
+
+  it('renders a departures skeleton during the initial pending state and swaps to cards when data arrives', async () => {
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({ data: null, isPending: true, isFetching: true })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    expect(screen.getByTestId('departures-skeleton')).toBeTruthy();
+    expect(screen.getByTestId('departures-skeleton-card-0')).toBeTruthy();
+    expect(screen.queryByText('Loading stop departures...')).toBeNull();
+
+    useStopDepartures.mockReturnValue(createDepartureQueryState());
+    screen.rerender(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('departures-skeleton')).toBeNull();
+      expect(screen.getByText('22:15')).toBeTruthy();
+      expect(screen.getByText('22:16')).toBeTruthy();
+    });
+  });
+
+  it('shows a subtle refresh indicator only during background refreshes', () => {
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({ isFetching: true, isPending: false })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    expect(screen.getByTestId('departures-refresh-indicator')).toBeTruthy();
+    expect(screen.queryByText('Loading stop departures...')).toBeNull();
+    expect(screen.getByTestId('departures-refresh-indicator-slot').props.style).toEqual(
+      expect.objectContaining({
+        minHeight: 28,
+      })
+    );
+  });
+
+  it('hides the refresh indicator when no background fetch is in progress', () => {
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    expect(screen.queryByTestId('departures-refresh-indicator')).toBeNull();
+  });
+
+  it('keeps cached departure cards visible and shows the error banner when a background refresh fails', async () => {
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({
+        isError: true,
+        error: { kind: 'network', message: 'DigiTransit API unavailable', retryable: true },
+        status: 'error',
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DigiTransit API unavailable')).toBeTruthy();
+      expect(screen.getByText('22:15')).toBeTruthy();
+      expect(screen.getByText('22:16')).toBeTruthy();
+    });
+  });
+
+  it('hides the error banner automatically when a later refresh succeeds', async () => {
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({
+        isError: true,
+        error: { kind: 'network', message: 'DigiTransit API unavailable', retryable: true },
+        status: 'error',
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DigiTransit API unavailable')).toBeTruthy();
+    });
+
+    useStopDepartures.mockReturnValue(createDepartureQueryState({ isFetching: true }));
+    screen.rerender(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('DigiTransit API unavailable')).toBeNull();
+      expect(screen.getByText('22:15')).toBeTruthy();
+    });
   });
 });
