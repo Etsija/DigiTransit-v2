@@ -58,10 +58,10 @@ development_status:
   2-6-map-tap-navigation-and-error-states: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-departures-screen-and-stop-header: done
   3-2-departure-cards-with-realtime-vs-scheduled-distinction: done
-  3-3-departures-auto-refresh-and-loading-states: backlog
+  3-3-departures-auto-refresh-and-loading-states: done
   epic-3-retrospective: optional
 
   epic-4: backlog

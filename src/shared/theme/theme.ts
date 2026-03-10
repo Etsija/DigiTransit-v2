@@ -45,6 +45,15 @@ const colors = {
     border: 'rgba(255, 255, 255, 0.10)',
   },
 
+  skeleton: {
+    base: 'rgba(255, 255, 255, 0.08)',
+    muted: 'rgba(255, 255, 255, 0.10)',
+    strong: 'rgba(255, 255, 255, 0.14)',
+    shimmerStart: 'rgba(255, 255, 255, 0)',
+    shimmerMid: 'rgba(255, 255, 255, 0.18)',
+    shimmerEnd: 'rgba(255, 255, 255, 0)',
+  },
+
   background: '#000000',
 } as const;
 

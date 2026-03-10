@@ -1,15 +1,15 @@
 import { Image } from 'expo-image';
 import React, { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AppError } from '@/core/errors/app-error';
+import { DeparturesSkeleton } from '@/features/departures/components/departures-skeleton';
 import { useStopDepartures } from '@/features/departures/hooks/use-stop-departures';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { DepartureCard } from '@/shared/components/departure-card';
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorBanner } from '@/shared/components/error-banner';
-import { LoadingState } from '@/shared/components/loading-state';
 import { StopHeaderCard } from '@/shared/components/stop-header-card';
 import { AppIcon } from '@/shared/icons';
 import { theme } from '@/shared/theme/theme';
@@ -48,10 +48,15 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
   const departuresQuery = useStopDepartures({ stopId });
   const header = departuresQuery.data?.header ?? null;
   const departures = departuresQuery.data?.departures ?? [];
+  const hasCachedDepartures = Boolean(header) && departures.length > 0;
   const showInitialLoader = !header && departuresQuery.isPending;
   const showErrorBanner = departuresQuery.isError;
+  const showInitialErrorBanner = showErrorBanner && !hasCachedDepartures;
+  const showCachedDataErrorBanner = showErrorBanner && hasCachedDepartures;
+  const showBackgroundRefreshIndicator =
+    departuresQuery.isFetching && !departuresQuery.isPending && hasCachedDepartures;
   const showEmptyState =
-    (!header || departures.length === 0) && !showInitialLoader && !departuresQuery.isError;
+    (!header || departures.length === 0) && !showInitialLoader && !hasCachedDepartures;
 
   React.useEffect(() => {
     if (!header || hasReportedReadyRef.current) {
@@ -97,7 +102,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
             longitude={coordinates?.longitude ?? null}
           />
 
-          {showErrorBanner ? (
+          {showInitialErrorBanner ? (
             <ErrorBanner message={resolveErrorMessage(departuresQuery.error)} />
           ) : null}
 
@@ -173,23 +178,41 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
               </>
             ) : null}
 
-            {header && departures.length > 0 ? (
-              <View style={styles.departuresList}>
-                {departures.map((departure) => (
-                  <DepartureCard
-                    key={`${departure.serviceDay}-${departure.routeShortName}-${departure.headsign}-${departure.displayDepartureEpochSeconds}`}
-                    routeShortName={departure.routeShortName}
-                    headsign={departure.headsign}
-                    departureTime={departure.displayTime}
-                    departureEpochSeconds={departure.displayDepartureEpochSeconds}
-                    status={departure.status}
-                    accessibilityLabel={departure.accessibilityLabel}
-                  />
-                ))}
+            {showCachedDataErrorBanner ? (
+              <ErrorBanner message={resolveErrorMessage(departuresQuery.error)} />
+            ) : null}
+
+            {hasCachedDepartures ? (
+              <View style={styles.departuresSection}>
+                <View
+                  pointerEvents='none'
+                  style={styles.refreshIndicatorSlot}
+                  testID='departures-refresh-indicator-slot'
+                >
+                  {showBackgroundRefreshIndicator ? (
+                    <View style={styles.refreshIndicator} testID='departures-refresh-indicator'>
+                      <ActivityIndicator color={theme.colors.text.secondary} size='small' />
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={styles.departuresList}>
+                  {departures.map((departure) => (
+                    <DepartureCard
+                      key={`${departure.serviceDay}-${departure.routeShortName}-${departure.headsign}-${departure.displayDepartureEpochSeconds}`}
+                      routeShortName={departure.routeShortName}
+                      headsign={departure.headsign}
+                      departureTime={departure.displayTime}
+                      departureEpochSeconds={departure.displayDepartureEpochSeconds}
+                      status={departure.status}
+                      accessibilityLabel={departure.accessibilityLabel}
+                    />
+                  ))}
+                </View>
               </View>
             ) : null}
 
-            {showInitialLoader ? <LoadingState message='Loading stop departures...' /> : null}
+            {showInitialLoader ? <DeparturesSkeleton /> : null}
 
             {showEmptyState ? (
               <EmptyState
@@ -253,6 +276,22 @@ const styles = StyleSheet.create({
   },
   departuresList: {
     gap: theme.layout.cardListGap,
+  },
+  departuresSection: {
+    gap: theme.spacing.sm,
+  },
+  refreshIndicatorSlot: {
+    minHeight: 28,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  refreshIndicator: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: 'rgba(12, 14, 19, 0.7)',
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
   },
   patternsSection: {
     borderRadius: theme.radius.card,
