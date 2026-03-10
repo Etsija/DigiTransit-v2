@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text } from 'react-native';
 
 import { theme } from '@/shared/theme/theme';
 
@@ -8,10 +8,44 @@ export type ErrorBannerProps = {
 };
 
 export function ErrorBanner({ message }: ErrorBannerProps) {
+  const entrance = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const animation = Animated.timing(entrance, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [entrance]);
+
   return (
-    <View style={styles.container} accessibilityRole='alert' accessibilityLiveRegion='polite'>
+    <Animated.View
+      accessibilityRole='alert'
+      accessibilityLiveRegion='polite'
+      style={[
+        styles.container,
+        {
+          opacity: entrance,
+          transform: [
+            {
+              translateY: entrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-12, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
       <Text style={styles.text}>{message}</Text>
-    </View>
+    </Animated.View>
   );
 }
 

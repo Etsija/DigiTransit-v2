@@ -6,12 +6,14 @@ import { theme } from '@/shared/theme/theme';
 
 type LocationDeniedStateProps = {
   canRequestAgain?: boolean;
+  message?: string;
   onOpenSettings: () => void;
   onRequestPermission?: () => void;
 };
 
 export function LocationDeniedState({
   canRequestAgain = false,
+  message = 'Enable location access in your device settings to center the map on where you are.',
   onOpenSettings,
   onRequestPermission,
 }: LocationDeniedStateProps) {
@@ -21,10 +23,7 @@ export function LocationDeniedState({
 
   return (
     <View style={styles.container}>
-      <EmptyState
-        title='Location unavailable'
-        message='Enable location access in your device settings to center the map on where you are.'
-      />
+      <EmptyState title='Location unavailable' message={message} />
       <Pressable
         accessibilityRole='button'
         accessibilityLabel={accessibilityLabel}

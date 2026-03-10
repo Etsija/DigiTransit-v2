@@ -175,6 +175,39 @@ describe('navigation route stubs', () => {
     expect(getByText('Current location')).toBeTruthy();
   });
 
+  it('pushes the canonical stop href when the map route selects a marker', () => {
+    const push = jest.fn();
+
+    mockUseRouter.mockReturnValue({
+      back: jest.fn(),
+      replace: jest.fn(),
+      push,
+    } as unknown as ReturnType<typeof useRouter>);
+
+    let capturedProps:
+      | {
+          isActive?: boolean;
+          onSelectStop?: (stopId: string) => void;
+        }
+      | undefined;
+
+    jest.isolateModules(() => {
+      jest.doMock('@/features/map/map-screen', () => ({
+        MapScreen: (props: typeof capturedProps) => {
+          capturedProps = props;
+          return null;
+        },
+      }));
+
+      const MapRoute = require('@/app/map').default;
+      render(<MapRoute />);
+    });
+
+    capturedProps?.onSelectStop?.('HSL:1234');
+
+    expect(push).toHaveBeenCalledWith(buildStopHref('HSL:1234'));
+  });
+
   it('redirects the root index route to the map screen', () => {
     render(<IndexRoute />);
 

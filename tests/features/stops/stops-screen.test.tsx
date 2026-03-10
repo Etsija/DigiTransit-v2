@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
 import { StopsScreen } from '@/features/stops/stops-screen';
@@ -33,6 +33,18 @@ jest.mock('expo-image', () => {
   };
 });
 
+jest.mock('@expo/vector-icons', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+
+  return {
+    Ionicons: (props: any) => <Text testID={props.testID}>{`ion:${props.name}`}</Text>,
+    MaterialCommunityIcons: (props: any) => (
+      <Text testID={props.testID}>{`mci:${props.name}`}</Text>
+    ),
+  };
+});
+
 jest.mock('@/features/map/hooks/use-device-location', () => ({
   useDeviceLocation: jest.fn(),
   requestDeviceLocationPermission: jest.fn(),
@@ -50,6 +62,7 @@ describe('StopsScreen', () => {
   const onStopPress = jest.fn();
   let settingsState: {
     locationUpdateIntervalSeconds: number;
+    searchRadiusMeters: number;
     homeStop: { gtfsId: string; name: string; transportMode: string | null } | null;
     updateSettings: jest.Mock;
   };
@@ -71,6 +84,7 @@ describe('StopsScreen', () => {
   beforeEach(() => {
     settingsState = {
       locationUpdateIntervalSeconds: 20,
+      searchRadiusMeters: 250,
       homeStop: null,
       updateSettings: jest.fn((patch: { homeStop?: typeof settingsState.homeStop }) => {
         settingsState = {
@@ -83,6 +97,7 @@ describe('StopsScreen', () => {
       (
         selector: (state: {
           locationUpdateIntervalSeconds: number;
+          searchRadiusMeters: number;
           homeStop: typeof settingsState.homeStop;
           updateSettings: typeof settingsState.updateSettings;
         }) => unknown
@@ -208,9 +223,7 @@ describe('StopsScreen', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Location unavailable')).toHaveLength(2);
       expect(screen.getByText('Enable location in settings')).toBeTruthy();
-      expect(
-        screen.getByText('Enable location access in your device settings to show nearby stops.')
-      ).toBeTruthy();
+      expect(screen.getByText('Enable location access to see nearby stops')).toBeTruthy();
     });
   });
 
@@ -234,6 +247,7 @@ describe('StopsScreen', () => {
   });
 
   it('shows a no-stops empty state when the radius returns no nearby results', async () => {
+    settingsState.searchRadiusMeters = 450;
     useNearbyStops.mockReturnValue({
       data: [],
       error: null,
@@ -248,7 +262,7 @@ describe('StopsScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('No nearby stops found')).toBeTruthy();
       expect(
-        screen.getByText('Try increasing the search radius in Settings and refresh your location.')
+        screen.getByText('No stops within 450m - try increasing search radius in Settings')
       ).toBeTruthy();
     });
   });
@@ -402,7 +416,9 @@ describe('StopsScreen', () => {
     fireEvent(stopCard, 'longPress');
     fireEvent(stopCard, 'pressOut');
     fireEvent.press(stopCard);
-    jest.runAllTimers();
+    act(() => {
+      jest.runAllTimers();
+    });
 
     expect(screen.getByText('Pin as home stop')).toBeTruthy();
     expect(onStopPress).not.toHaveBeenCalled();

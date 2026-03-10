@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,10 +13,12 @@ import {
 import { createMapStopMarkers } from '@/features/map/hooks/use-map-stop-markers';
 import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
+import { ErrorBanner } from '@/shared/components/error-banner';
 import { theme } from '@/shared/theme/theme';
 
 type MapScreenProps = {
   isActive?: boolean;
+  onSelectStop?: (stopId: string) => void;
 };
 
 const MAP_LOAD_BUDGET_MS = 3000;
@@ -29,7 +31,7 @@ function getNow() {
   return Date.now();
 }
 
-export function MapScreen({ isActive = true }: MapScreenProps) {
+export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   const mapLoadStartedAtRef = useRef(getNow());
   const hasReportedMapReadyRef = useRef(false);
   const hasRetriedPermissionPromptRef = useRef(false);
@@ -49,10 +51,15 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
     coordinates: location.coordinates,
     enabled: isActive && Boolean(location.coordinates),
   });
-  const markers = createMapStopMarkers(nearbyStopsQuery.data ?? [], {
-    homeStopId,
-    maxDistanceMeters: searchRadiusMeters,
-  });
+  const markers = useMemo(
+    () =>
+      createMapStopMarkers(nearbyStopsQuery.data ?? [], {
+        homeStopId,
+        maxDistanceMeters: searchRadiusMeters,
+        onSelectStop,
+      }),
+    [homeStopId, nearbyStopsQuery.data, onSelectStop, searchRadiusMeters]
+  );
   const handleMapReady = () => {
     if (hasReportedMapReadyRef.current) {
       return;
@@ -113,6 +120,8 @@ export function MapScreen({ isActive = true }: MapScreenProps) {
             latitude={location.coordinates?.latitude ?? null}
             longitude={location.coordinates?.longitude ?? null}
           />
+
+          {nearbyStopsQuery.isError ? <ErrorBanner message='DigiTransit API unavailable' /> : null}
 
           {showDeniedState ? (
             <LocationDeniedState
