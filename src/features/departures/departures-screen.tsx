@@ -1,16 +1,17 @@
 import { Image } from 'expo-image';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AppError } from '@/core/errors/app-error';
 import { useStopDepartures } from '@/features/departures/hooks/use-stop-departures';
-import { AppIcon } from '@/shared/icons';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
+import { DepartureCard } from '@/shared/components/departure-card';
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorBanner } from '@/shared/components/error-banner';
 import { LoadingState } from '@/shared/components/loading-state';
 import { StopHeaderCard } from '@/shared/components/stop-header-card';
+import { AppIcon } from '@/shared/icons';
 import { theme } from '@/shared/theme/theme';
 
 const DEPARTURES_RENDER_BUDGET_MS = 2000;
@@ -43,11 +44,14 @@ function resolveErrorMessage(error: AppError | Error | null | undefined): string
 export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScreenProps) {
   const renderStartedAtRef = useRef(getNow());
   const hasReportedReadyRef = useRef(false);
+  const [showPatterns, setShowPatterns] = useState(false);
   const departuresQuery = useStopDepartures({ stopId });
   const header = departuresQuery.data?.header ?? null;
+  const departures = departuresQuery.data?.departures ?? [];
   const showInitialLoader = !header && departuresQuery.isPending;
   const showErrorBanner = departuresQuery.isError;
-  const showEmptyState = !header && !showInitialLoader && !departuresQuery.isError;
+  const showEmptyState =
+    (!header || departures.length === 0) && !showInitialLoader && !departuresQuery.isError;
 
   React.useEffect(() => {
     if (!header || hasReportedReadyRef.current) {
@@ -67,6 +71,10 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
       }
     }
   }, [header]);
+
+  React.useEffect(() => {
+    setShowPatterns(false);
+  }, [stopId]);
 
   return (
     <View style={styles.container}>
@@ -90,9 +98,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
           />
 
           {showErrorBanner ? (
-            <ErrorBanner
-              message={resolveErrorMessage(departuresQuery.error)}
-            />
+            <ErrorBanner message={resolveErrorMessage(departuresQuery.error)} />
           ) : null}
 
           <ScrollView
@@ -119,22 +125,80 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
             </View>
 
             {header ? (
-              <StopHeaderCard
-                code={header.code}
-                directionLabel={header.directionLabel}
-                name={header.name}
-                patternLabels={header.patternLabels}
-                transportMode={header.transportMode}
-                zoneLabel={header.zoneLabel}
-              />
+              <>
+                <StopHeaderCard
+                  code={header.code}
+                  directionLabel={header.directionLabel}
+                  name={header.name}
+                  transportMode={header.transportMode}
+                  zoneLabel={header.zoneLabel}
+                />
+
+                {header.patternLabels.length > 0 ? (
+                  <View style={styles.patternsSection}>
+                    <Pressable
+                      className='py-4'
+                      accessibilityRole='button'
+                      accessibilityLabel={`Patterns via this stop (${header.patternLabels.length})`}
+                      hitSlop={8}
+                      onPress={() => setShowPatterns((current) => !current)}
+                      style={({ pressed }) => [
+                        styles.patternsToggle,
+                        pressed && styles.patternsTogglePressed,
+                      ]}
+                    >
+                      <Text style={styles.patternsToggleLabel}>
+                        {`Patterns via this stop (${header.patternLabels.length})`}
+                      </Text>
+                      <View pointerEvents='none' style={styles.patternsToggleIcon}>
+                        <AppIcon
+                          name={showPatterns ? 'chevron-up' : 'chevron-down'}
+                          size={18}
+                          color={theme.colors.text.secondary}
+                        />
+                      </View>
+                    </Pressable>
+
+                    {showPatterns ? (
+                      <View style={styles.patternsList}>
+                        {header.patternLabels.map((patternLabel) => (
+                          <Text key={patternLabel} style={styles.patternText}>
+                            {patternLabel}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+
+            {header && departures.length > 0 ? (
+              <View style={styles.departuresList}>
+                {departures.map((departure) => (
+                  <DepartureCard
+                    key={`${departure.serviceDay}-${departure.routeShortName}-${departure.headsign}-${departure.displayDepartureEpochSeconds}`}
+                    routeShortName={departure.routeShortName}
+                    headsign={departure.headsign}
+                    departureTime={departure.displayTime}
+                    departureEpochSeconds={departure.displayDepartureEpochSeconds}
+                    status={departure.status}
+                    accessibilityLabel={departure.accessibilityLabel}
+                  />
+                ))}
+              </View>
             ) : null}
 
             {showInitialLoader ? <LoadingState message='Loading stop departures...' /> : null}
 
             {showEmptyState ? (
               <EmptyState
-                title='Stop unavailable'
-                message='We could not load this stop right now. The route shell will recover automatically when data becomes available.'
+                title={header ? 'No upcoming departures' : 'Stop unavailable'}
+                message={
+                  header
+                    ? 'This stop has no upcoming departures right now.'
+                    : 'We could not load this stop right now. The route shell will recover automatically when data becomes available.'
+                }
               />
             ) : null}
           </ScrollView>
@@ -186,6 +250,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
+  },
+  departuresList: {
+    gap: theme.layout.cardListGap,
+  },
+  patternsSection: {
+    borderRadius: theme.radius.card,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
+    backgroundColor: 'rgba(11, 16, 26, 0.68)',
+    overflow: 'hidden',
+  },
+  patternsToggle: {
+    width: '100%',
+    position: 'relative',
+    height: 64,
+    paddingHorizontal: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  patternsTogglePressed: {
+    opacity: 0.72,
+  },
+  patternsToggleLabel: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.base.fontSize,
+    fontWeight: '600',
+    lineHeight: 20,
+    paddingLeft: theme.spacing.lg,
+    paddingRight: theme.spacing.xl,
+  },
+  patternsToggleIcon: {
+    position: 'absolute',
+    right: theme.spacing.lg,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  patternsList: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing.xs,
+  },
+  patternText: {
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: theme.typography.sm.fontWeight,
   },
   backButton: {
     minWidth: theme.layout.minTouchTarget,

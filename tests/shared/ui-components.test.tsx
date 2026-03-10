@@ -1,8 +1,8 @@
 /// <reference types="jest" />
 
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { DepartureCard } from '@/shared/components/departure-card';
@@ -192,34 +192,54 @@ describe('Transport & Status UI Components', () => {
   });
 
   describe('DepartureCard', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2023-11-14T22:12:00.000Z'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('renders realtime departure with Live GPS label', () => {
-      const { getByText } = render(
+      const { getByTestId, getByText } = render(
         <DepartureCard
           routeShortName='7A'
           headsign='Keskusta'
           departureTime='14:35'
+          departureEpochSeconds={1_700_000_125}
           status='realtime'
+          accessibilityLabel='14:35, route 7A to Keskusta, Live GPS'
         />
       );
 
       expect(getByText('7A')).toBeTruthy();
       expect(getByText('Keskusta')).toBeTruthy();
       expect(getByText('14:35')).toBeTruthy();
-      expect(getByText(/Live GPS/)).toBeTruthy();
+      expect(getByText('● Live GPS')).toBeTruthy();
+      expect(getByText('3 min')).toBeTruthy();
+      expect(
+        StyleSheet.flatten(getByTestId('departure-card-surface').props.style).borderLeftColor
+      ).toBe('#4ADE80');
     });
 
     it('renders estimated departure with Scheduled label', () => {
-      const { getByText } = render(
+      const { getByTestId, getByText } = render(
         <DepartureCard
           routeShortName='7A'
           headsign='Keskusta'
           departureTime='14:40'
+          departureEpochSeconds={1_700_000_180}
           status='estimated'
+          accessibilityLabel='14:40, route 7A to Keskusta, Scheduled'
         />
       );
 
       expect(getByText('14:40')).toBeTruthy();
-      expect(getByText(/Scheduled/)).toBeTruthy();
+      expect(getByText('~ Scheduled')).toBeTruthy();
+      expect(
+        StyleSheet.flatten(getByTestId('departure-card-surface').props.style).borderLeftColor
+      ).toBe('#FBBF24');
     });
 
     it('includes status in the accessibility label', () => {
@@ -228,11 +248,34 @@ describe('Transport & Status UI Components', () => {
           routeShortName='7A'
           headsign='Keskusta'
           departureTime='14:35'
+          departureEpochSeconds={1_700_000_125}
           status='realtime'
+          accessibilityLabel='14:35, route 7A to Keskusta, Live GPS'
         />
       );
 
       expect(getByLabelText('14:35, route 7A to Keskusta, Live GPS')).toBeTruthy();
+    });
+
+    it('updates the secondary time-to-departure line while the screen stays open', () => {
+      const { getByText } = render(
+        <DepartureCard
+          routeShortName='7A'
+          headsign='Keskusta'
+          departureTime='14:35'
+          departureEpochSeconds={1_700_000_125}
+          status='realtime'
+          accessibilityLabel='14:35, route 7A to Keskusta, Live GPS'
+        />
+      );
+
+      expect(getByText('3 min')).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(61_000);
+      });
+
+      expect(getByText('2 min')).toBeTruthy();
     });
 
     it('renders a clock badge when a notification is scheduled', () => {
@@ -241,7 +284,9 @@ describe('Transport & Status UI Components', () => {
           routeShortName='600'
           headsign='Helsinki Airport'
           departureTime='14:51'
+          departureEpochSeconds={1_700_000_125}
           status='realtime'
+          accessibilityLabel='14:51, route 600 to Helsinki Airport, Live GPS'
           notificationScheduled
         />
       );

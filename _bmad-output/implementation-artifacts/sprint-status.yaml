@@ -60,7 +60,7 @@ development_status:
 
   epic-3: in-progress
   3-1-departures-screen-and-stop-header: done
-  3-2-departure-cards-with-realtime-vs-scheduled-distinction: backlog
+  3-2-departure-cards-with-realtime-vs-scheduled-distinction: done
   3-3-departures-auto-refresh-and-loading-states: backlog
   epic-3-retrospective: optional
 
@@ -74,6 +74,7 @@ development_status:
   5-1-on-launch-home-stop-notification: backlog
   5-2-per-departure-notification-scheduling: backlog
   5-3-departure-notification-cancellation: backlog
+  5-4-ui-styling-consistency-cleanup-with-nativewind: backlog
   epic-5-retrospective: optional
 
   epic-6: backlog

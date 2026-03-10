@@ -978,6 +978,39 @@ So that I can undo a reminder I no longer need (FR46).
 
 ---
 
+### Story 5.4: UI Styling Consistency Cleanup with NativeWind
+
+As a developer,
+I want the app's screen and component layout styling to consistently prefer NativeWind utility classes for view-level spacing, sizing, and alignment,
+So that UI iteration is faster, styling intent is easier to read, and the codebase avoids unnecessary `StyleSheet` churn for simple layout changes.
+
+**Acceptance Criteria:**
+
+**Given** screen-level and component-level layout code in the current app shell
+**When** styling is reviewed
+**Then** view/layout-only concerns such as padding, margin, flex alignment, row/column flow, sizing, and gap usage are migrated to `className`-based NativeWind utilities where that is already supported cleanly
+**And** `StyleSheet` remains only for cases that materially need it, such as dynamic token-driven values, absolute overlays, or APIs that do not map cleanly to NativeWind
+
+**Given** the departures, stops, and shared card surfaces are revisited
+**When** simple spacing or alignment adjustments are needed
+**Then** those changes can be made by editing NativeWind utility classes instead of threading additional one-off `StyleSheet` rules through the component
+
+**Given** a component mixes NativeWind and `StyleSheet`
+**When** the code is reviewed
+**Then** the split is intentional and easy to explain: NativeWind for static layout primitives, `StyleSheet` for dynamic or platform-specific styling
+
+**Given** the migration is complete for the targeted surfaces
+**When** the affected screens are tested on device
+**Then** there are no visual regressions in touch target size, spacing rhythm, or typography alignment across the map, stops, departures, and settings flows
+
+**Technical notes:**
+- Treat this as a cleanup/consistency story; it does not introduce new user-facing product scope
+- Start with the highest-churn UI surfaces: `src/features/departures/`, `src/features/stops/`, and shared presentational components under `src/shared/components/`
+- Preserve existing design tokens and dynamic theme-driven values; this is not a redesign story
+- Prefer incremental migration over big-bang rewrites so screens remain easy to diff and review
+
+---
+
 ## Epic 6: Build & Release
 
 The app is buildable and distributable on iOS and Android via EAS Build development, preview, and production profiles, with CI quality gates (typecheck, lint, format:check, codegen validation) enforced on all PRs.

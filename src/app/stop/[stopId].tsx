@@ -1,11 +1,11 @@
 import { useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import type { StopRouteParams } from '@/types/navigation';
 import React from 'react';
 
 import { useSettingsStore } from '@/core/store/settings.store';
 import { DeparturesScreen } from '@/features/departures/departures-screen';
 import { useDeviceLocation } from '@/features/map/hooks/use-device-location';
+import type { StopRouteParams } from '@/types/navigation';
 
 export default function StopDetailsScreen() {
   const isFocused = useIsFocused();

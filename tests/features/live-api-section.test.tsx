@@ -5,6 +5,7 @@ import { render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
 import { requestGraphql } from '@/core/api/graphql-client';
+import { formatServiceDayDepartureTime } from '@/core/utils/date';
 import { LiveApiSection } from '@/features/showcase/live-api-section';
 import { StopDeparturesQueryDocument, StopsNearbyQueryDocument } from '@/generated/graphql';
 
@@ -44,6 +45,7 @@ describe('LiveApiSection', () => {
   });
 
   it('automatically runs nearby stops first and then departures for the first valid stop', async () => {
+    const expectedDepartureTime = formatServiceDayDepartureTime(1_710_028_800, 14 * 3600 + 35 * 60);
     const nearbyDeferred = createDeferred<unknown>();
     const departuresDeferred = createDeferred<unknown>();
 
@@ -128,7 +130,9 @@ describe('LiveApiSection', () => {
     expect(screen.getByText('Stop vehicleMode: BUS')).toBeTruthy();
     expect(screen.getByText('Resolved UI transport mode: bus')).toBeTruthy();
     expect(screen.getByText('Distance: 120 m')).toBeTruthy();
-    expect(screen.getByText('Departure 1: 14:35 · 7A · Kamppi · UPDATED')).toBeTruthy();
+    expect(
+      screen.getByText(`Departure 1: ${expectedDepartureTime} · 7A · Kamppi · UPDATED`)
+    ).toBeTruthy();
   });
 
   it('shows explicit authentication guidance when the API rejects access', async () => {

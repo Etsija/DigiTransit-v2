@@ -23,6 +23,27 @@ import {
   showcaseStopVariants,
 } from './mock-data';
 
+function resolveShowcaseDepartureEpochSeconds(departureTime: string): number {
+  const [hoursText, minutesText] = departureTime.split(':');
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText);
+
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return Math.floor(Date.now() / 1000);
+  }
+
+  const now = new Date();
+  const departure = new Date(now);
+  departure.setSeconds(0, 0);
+  departure.setHours(hours, minutes, 0, 0);
+
+  if (departure.getTime() <= now.getTime()) {
+    departure.setDate(departure.getDate() + 1);
+  }
+
+  return Math.floor(departure.getTime() / 1000);
+}
+
 export function ShowcaseScreen() {
   const router = useRouter();
   const [selectedMarker, setSelectedMarker] = useState<string | null>('bus-tapped');
@@ -71,7 +92,9 @@ export function ShowcaseScreen() {
                 routeShortName='7A'
                 headsign='Kamppi'
                 departureTime='14:35'
+                departureEpochSeconds={resolveShowcaseDepartureEpochSeconds('14:35')}
                 status='realtime'
+                accessibilityLabel='14:35, route 7A to Kamppi, Live GPS'
               />
             </GlassCard>
           </ShowcaseSection>
@@ -132,7 +155,11 @@ export function ShowcaseScreen() {
                     routeShortName={departure.routeShortName}
                     headsign={departure.headsign}
                     departureTime={departure.departureTime}
+                    departureEpochSeconds={resolveShowcaseDepartureEpochSeconds(
+                      departure.departureTime
+                    )}
                     status={departure.status}
+                    accessibilityLabel={`${departure.departureTime}, route ${departure.routeShortName} to ${departure.headsign}, ${departure.status === 'realtime' ? 'Live GPS' : 'Scheduled'}`}
                     notificationScheduled={departure.notificationScheduled}
                   />
                 </GlassCard>

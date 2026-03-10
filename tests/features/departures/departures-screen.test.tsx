@@ -53,7 +53,9 @@ describe('DeparturesScreen', () => {
   const onBack = jest.fn();
   const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
   const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-  const { useStopDepartures } = jest.requireMock('@/features/departures/hooks/use-stop-departures') as {
+  const { useStopDepartures } = jest.requireMock(
+    '@/features/departures/hooks/use-stop-departures'
+  ) as {
     useStopDepartures: jest.Mock;
   };
 
@@ -68,7 +70,36 @@ describe('DeparturesScreen', () => {
           directionLabel: 'Munkkiniemi',
           patternLabels: ['4 to Munkkiniemi', '7B'],
         },
-        departures: [],
+        departures: [
+          {
+            scheduledDeparture: 120,
+            realtimeDeparture: 125,
+            realtime: true,
+            realtimeState: 'UPDATED',
+            serviceDay: 1_700_000_000,
+            headsign: 'Munkkiniemi',
+            routeShortName: '4',
+            displayDepartureEpochSeconds: 1_700_000_125,
+            displayTime: '22:15',
+            status: 'realtime',
+            statusLabel: 'Live GPS',
+            accessibilityLabel: '22:15, route 4 to Munkkiniemi, Live GPS',
+          },
+          {
+            scheduledDeparture: 180,
+            realtimeDeparture: 180,
+            realtime: false,
+            realtimeState: 'SCHEDULED',
+            serviceDay: 1_700_000_000,
+            headsign: 'Pasila',
+            routeShortName: '7B',
+            displayDepartureEpochSeconds: 1_700_000_180,
+            displayTime: '22:16',
+            status: 'estimated',
+            statusLabel: 'Scheduled',
+            accessibilityLabel: '22:16, route 7B to Pasila, Scheduled',
+          },
+        ],
       },
       error: null,
       isError: false,
@@ -87,7 +118,7 @@ describe('DeparturesScreen', () => {
     warnSpy.mockRestore();
   });
 
-  it('renders the stop header on a static backdrop and never mounts a live map surface', async () => {
+  it('renders the stop header and departure cards on a static backdrop without mounting a live map surface', async () => {
     const screen = render(
       <DeparturesScreen
         onBack={onBack}
@@ -100,16 +131,38 @@ describe('DeparturesScreen', () => {
       expect(screen.getByText('Central station')).toBeTruthy();
       expect(screen.getByText('-> Munkkiniemi')).toBeTruthy();
       expect(screen.getByText('Zone A')).toBeTruthy();
-      expect(screen.getByText('Patterns via this stop:')).toBeTruthy();
-      expect(screen.getByText('4 to Munkkiniemi')).toBeTruthy();
-      expect(screen.getByText('7B')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Patterns via this stop (2)' })).toBeTruthy();
+      expect(screen.getByText('22:15')).toBeTruthy();
+      expect(screen.getByText('22:16')).toBeTruthy();
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+      expect(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled')).toBeTruthy();
     });
 
+    expect(screen.queryByText('4 to Munkkiniemi')).toBeNull();
     expect(screen.getByTestId('departures-static-backdrop')).toBeTruthy();
     expect(screen.getByTestId('departures-scroll-view')).toBeTruthy();
     expect(screen.queryByTestId('live-map-surface')).toBeNull();
     expect(screen.queryByText('Departures list arrives next')).toBeNull();
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('[departures] visible in'));
+  });
+
+  it('reveals the full stop pattern list only after the disclosure row is pressed', async () => {
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Patterns via this stop (2)' })).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByRole('button', { name: 'Patterns via this stop (2)' }));
+
+    expect(screen.getByText('4 to Munkkiniemi')).toBeTruthy();
+    expect(screen.getAllByText('7B')).toHaveLength(2);
   });
 
   it('calls back navigation from the screen header affordance', async () => {
