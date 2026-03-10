@@ -1,5 +1,5 @@
-import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import { theme } from '@/shared/theme/theme';

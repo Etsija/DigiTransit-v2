@@ -33,7 +33,7 @@ describe('mapToAppError', () => {
       mapToAppError(createClientError({ status: 200, errors: [{ message: 'Invalid query' }] }))
     ).toMatchObject({
       kind: 'graphql',
-      message: 'Invalid query',
+      message: 'HTTP 200: Invalid query',
       retryable: false,
     });
   });

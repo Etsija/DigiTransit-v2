@@ -9,6 +9,17 @@ export interface AppError {
   cause?: unknown;
 }
 
+export function getAppErrorMessage(
+  error: AppError | Error | null | undefined,
+  fallback = 'DigiTransit API unavailable'
+): string {
+  if (!error?.message) {
+    return fallback;
+  }
+
+  return error.message;
+}
+
 function isNetworkMessage(message: string): boolean {
   return /fetch failed|network|timed out|timeout|socket|dns|eai_again|offline/i.test(message);
 }
@@ -21,23 +32,42 @@ function getGraphQLErrorMessage(error: ClientError): string | undefined {
   return error.response.errors.map((item) => item.message).join('; ');
 }
 
+function formatClientErrorStatus(error: ClientError): string {
+  return typeof error.response.status === 'number' ? `HTTP ${error.response.status}` : 'HTTP error';
+}
+
+function getResponseText(error: ClientError): string | undefined {
+  const responseData = error.response as { data?: unknown } | undefined;
+
+  if (typeof responseData?.data === 'string' && responseData.data.trim().length > 0) {
+    return responseData.data.trim();
+  }
+
+  return undefined;
+}
+
 export function mapToAppError(error: unknown): AppError {
   if (error instanceof ClientError) {
+    const statusLabel = formatClientErrorStatus(error);
+    const graphQLErrorMessage = getGraphQLErrorMessage(error);
+    const responseText = getResponseText(error);
+
     if (error.response.status === 401 || error.response.status === 403) {
       return {
         kind: 'permission',
-        message: 'DigiTransit API access was rejected.',
+        message: [
+          statusLabel,
+          graphQLErrorMessage ?? responseText ?? 'DigiTransit API access was rejected.',
+        ].join(': '),
         retryable: false,
         cause: error,
       };
     }
 
-    const graphQLErrorMessage = getGraphQLErrorMessage(error);
-
     if (graphQLErrorMessage) {
       return {
         kind: 'graphql',
-        message: graphQLErrorMessage,
+        message: `${statusLabel}: ${graphQLErrorMessage}`,
         retryable: false,
         cause: error,
       };
@@ -46,7 +76,7 @@ export function mapToAppError(error: unknown): AppError {
     if (error.response.status >= 500) {
       return {
         kind: 'network',
-        message: `DigiTransit API request failed with status ${error.response.status}.`,
+        message: `${statusLabel}: ${responseText ?? 'DigiTransit API request failed.'}`,
         retryable: true,
         cause: error,
       };
@@ -54,7 +84,7 @@ export function mapToAppError(error: unknown): AppError {
 
     return {
       kind: 'unknown',
-      message: `DigiTransit API request failed with status ${error.response.status}.`,
+      message: `${statusLabel}: ${responseText ?? 'DigiTransit API request failed.'}`,
       retryable: false,
       cause: error,
     };

@@ -35,7 +35,13 @@ export default function AppTabs() {
       {showTabBar ? (
         <GlassView
           glassEffectStyle={theme.glass.glassStyle}
-          style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, theme.spacing.sm) }]}
+          style={[
+            styles.tabBar,
+            {
+              bottom: insets.bottom + theme.spacing.sm,
+              paddingBottom: theme.spacing.sm,
+            },
+          ]}
         >
           {TAB_ROUTES.map((route) => {
             const isActive = pathname === route.href;
@@ -81,7 +87,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: theme.spacing.lg,
     right: theme.spacing.lg,
-    bottom: theme.spacing.sm,
     borderRadius: theme.radius.bar,
     borderWidth: 1,
     borderColor: theme.colors.card.border,
