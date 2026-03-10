@@ -6,7 +6,9 @@ export const showcaseHeaderStop = {
   name: 'Asema-aukio 1, Helsinki',
   code: 'HSL:1001',
   transportMode: 'bus' as const,
-  distanceLabel: '120 m',
+  zoneLabel: 'Zone A',
+  directionLabel: 'Kamppi',
+  patternLabels: ['600 to Helsinki Airport', '615'],
 };
 
 export const showcaseStopVariants = SHOWCASE_TRANSPORT_MODES.flatMap((transportMode, index) => [
