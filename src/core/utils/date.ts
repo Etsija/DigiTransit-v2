@@ -12,5 +12,5 @@ export function formatServiceDayDepartureTime(
 
   const departureDate = new Date((serviceDay + departureSeconds) * 1000);
 
-  return `${padTimeUnit(departureDate.getUTCHours())}:${padTimeUnit(departureDate.getUTCMinutes())}`;
+  return `${padTimeUnit(departureDate.getHours())}:${padTimeUnit(departureDate.getMinutes())}`;
 }

@@ -8,24 +8,64 @@ export type DepartureCardProps = {
   routeShortName: string;
   headsign: string;
   departureTime: string;
+  departureEpochSeconds: number;
   status: StatusType;
+  accessibilityLabel?: string;
   notificationScheduled?: boolean;
   onPress?: () => void;
 };
+
+function formatTimeToDeparture(departureEpochSeconds: number, nowMs: number): string {
+  const secondsRemaining = departureEpochSeconds - Math.floor(nowMs / 1000);
+
+  if (secondsRemaining <= 0) {
+    return 'Due';
+  }
+
+  if (secondsRemaining < 60) {
+    return '<1 min';
+  }
+
+  return `${Math.floor(secondsRemaining / 60)} min`;
+}
 
 export function DepartureCard({
   routeShortName,
   headsign,
   departureTime,
+  departureEpochSeconds,
   status,
+  accessibilityLabel,
   notificationScheduled = false,
   onPress,
 }: DepartureCardProps) {
   const isRealtime = status === 'realtime';
   const borderColor = isRealtime ? theme.colors.status.realtime : theme.colors.status.estimated;
   const statusLabel = isRealtime ? 'Live GPS' : 'Scheduled';
+  const [timeToDeparture, setTimeToDeparture] = React.useState(() =>
+    formatTimeToDeparture(departureEpochSeconds, Date.now())
+  );
+
+  React.useEffect(() => {
+    setTimeToDeparture(formatTimeToDeparture(departureEpochSeconds, Date.now()));
+
+    const interval = setInterval(() => {
+      setTimeToDeparture(formatTimeToDeparture(departureEpochSeconds, Date.now()));
+    }, 30_000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [departureEpochSeconds]);
+
+  const resolvedAccessibilityLabel =
+    accessibilityLabel ??
+    `${departureTime}, route ${routeShortName} to ${headsign}, ${statusLabel}`;
   const content = (
-    <View style={[styles.container, { borderLeftColor: borderColor }]}>
+    <View
+      style={[styles.container, { borderLeftColor: borderColor }]}
+      testID='departure-card-surface'
+    >
       <View style={styles.routeContainer}>
         <Text style={styles.routeText}>{routeShortName}</Text>
       </View>
@@ -48,7 +88,10 @@ export function DepartureCard({
           </View>
         ) : null}
 
-        <Text style={[styles.timeText, isRealtime && styles.timeTextBold]}>{departureTime}</Text>
+        <View style={styles.timeCopy}>
+          <Text style={[styles.timeText, isRealtime && styles.timeTextBold]}>{departureTime}</Text>
+          <Text style={styles.timeToDepartureText}>{timeToDeparture}</Text>
+        </View>
       </View>
     </View>
   );
@@ -57,7 +100,7 @@ export function DepartureCard({
     return (
       <Pressable
         accessibilityRole='button'
-        accessibilityLabel={`${departureTime}, route ${routeShortName} to ${headsign}, ${statusLabel}`}
+        accessibilityLabel={resolvedAccessibilityLabel}
         onPress={onPress}
         style={({ pressed }) => pressed && styles.pressed}
       >
@@ -67,10 +110,7 @@ export function DepartureCard({
   }
 
   return (
-    <View
-      accessibilityRole='summary'
-      accessibilityLabel={`${departureTime}, route ${routeShortName} to ${headsign}, ${statusLabel}`}
-    >
+    <View accessibilityRole='summary' accessibilityLabel={resolvedAccessibilityLabel}>
       {content}
     </View>
   );
@@ -115,6 +155,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
+  timeCopy: {
+    alignItems: 'flex-end',
+    gap: theme.spacing.xs,
+  },
   notificationBadge: {
     width: 24,
     height: 24,
@@ -132,6 +176,11 @@ const styles = StyleSheet.create({
   },
   timeTextBold: {
     fontWeight: theme.typography.xl.fontWeight,
+  },
+  timeToDepartureText: {
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: theme.typography.sm.fontWeight,
   },
   pressed: {
     opacity: 0.7,

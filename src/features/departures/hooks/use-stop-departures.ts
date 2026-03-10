@@ -3,14 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { requestGraphql } from '@/core/api/graphql-client';
 import { queryKeys } from '@/core/api/query-keys';
 import { useSettingsStore } from '@/core/store/settings.store';
+import { formatServiceDayDepartureTime } from '@/core/utils/date';
 import {
   mapGraphqlModeToTransportMode,
   mapGraphqlTransitModeToTransportMode,
 } from '@/core/utils/transport-mode';
-import {
-  StopDeparturesQueryDocument,
-  type StopDeparturesQueryQuery,
-} from '@/generated/graphql';
+import { StopDeparturesQueryDocument, type StopDeparturesQueryQuery } from '@/generated/graphql';
 import type { TransportMode } from '@/shared/theme/theme';
 
 export type StopDepartureHeader = {
@@ -28,8 +26,13 @@ export type StopDeparture = {
   realtime: boolean;
   realtimeState: string | null;
   serviceDay: number;
-  headsign: string | null;
-  routeShortName: string | null;
+  headsign: string;
+  routeShortName: string;
+  displayDepartureEpochSeconds: number;
+  displayTime: string;
+  status: 'realtime' | 'estimated';
+  statusLabel: 'Live GPS' | 'Scheduled';
+  accessibilityLabel: string;
 };
 
 export type StopDeparturesModel = {
@@ -119,9 +122,7 @@ function resolveHeaderTransportMode(stop: StopQueryStop): TransportMode | null {
   return null;
 }
 
-function normalizeDepartures(
-  stoptimes: StopQueryStoptimes
-): StopDeparture[] {
+function normalizeDepartures(stoptimes: StopQueryStoptimes): StopDeparture[] {
   const normalized: StopDeparture[] = [];
 
   for (const stoptime of stoptimes ?? []) {
@@ -133,14 +134,32 @@ function normalizeDepartures(
       continue;
     }
 
+    const headsign = stoptime.headsign?.trim();
+    const routeShortName = stoptime.trip?.route.shortName?.trim();
+
+    if (!headsign || !routeShortName) {
+      continue;
+    }
+
+    const status = stoptime.realtime ? 'realtime' : 'estimated';
+    const statusLabel = status === 'realtime' ? 'Live GPS' : 'Scheduled';
+    const displayDepartureSeconds =
+      status === 'realtime' ? stoptime.realtimeDeparture : stoptime.scheduledDeparture;
+    const displayTime = formatServiceDayDepartureTime(stoptime.serviceDay, displayDepartureSeconds);
+
     normalized.push({
       scheduledDeparture: stoptime.scheduledDeparture,
       realtimeDeparture: stoptime.realtimeDeparture,
       realtime: Boolean(stoptime.realtime),
       realtimeState: stoptime.realtimeState ?? null,
       serviceDay: stoptime.serviceDay,
-      headsign: stoptime.headsign?.trim() || null,
-      routeShortName: stoptime.trip?.route.shortName?.trim() || null,
+      headsign,
+      routeShortName,
+      displayDepartureEpochSeconds: stoptime.serviceDay + displayDepartureSeconds,
+      displayTime,
+      status,
+      statusLabel,
+      accessibilityLabel: `${displayTime}, route ${routeShortName} to ${headsign}, ${statusLabel}`,
     });
   }
 

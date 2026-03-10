@@ -37,10 +37,6 @@ export function StopHeaderCard({
     accessibilityParts.push(`towards ${directionLabel}`);
   }
 
-  if (patternLabels.length > 0) {
-    accessibilityParts.push(`patterns ${patternLabels.join(', ')}`);
-  }
-
   return (
     <View
       accessibilityRole='summary'
@@ -65,7 +61,9 @@ export function StopHeaderCard({
             style={[
               styles.inlineIconBadge,
               {
-                backgroundColor: `${transportColor}${Math.round(theme.glass.iconBadgeBgOpacity * 255)
+                backgroundColor: `${transportColor}${Math.round(
+                  theme.glass.iconBadgeBgOpacity * 255
+                )
                   .toString(16)
                   .padStart(2, '0')}`,
               },
@@ -84,16 +82,6 @@ export function StopHeaderCard({
           {code ? <Text style={[styles.codeText, { color: transportColor }]}>{code}</Text> : null}
           {zoneLabel ? <Text style={styles.zoneText}>{zoneLabel}</Text> : null}
         </View>
-        {patternLabels.length > 0 ? (
-          <View style={styles.patternsBlock}>
-            <Text style={styles.patternsLabel}>Patterns via this stop:</Text>
-            {patternLabels.map((patternLabel) => (
-              <Text key={patternLabel} style={styles.patternText}>
-                {patternLabel}
-              </Text>
-            ))}
-          </View>
-        ) : null}
       </View>
     </View>
   );
@@ -152,19 +140,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   zoneText: {
-    color: theme.colors.text.secondary,
-    fontSize: theme.typography.sm.fontSize,
-    fontWeight: theme.typography.sm.fontWeight,
-  },
-  patternsBlock: {
-    gap: theme.spacing.xs,
-  },
-  patternsLabel: {
-    color: theme.colors.text.secondary,
-    fontSize: theme.typography.sm.fontSize,
-    fontWeight: theme.typography.sm.fontWeight,
-  },
-  patternText: {
     color: theme.colors.text.secondary,
     fontSize: theme.typography.sm.fontSize,
     fontWeight: theme.typography.sm.fontWeight,

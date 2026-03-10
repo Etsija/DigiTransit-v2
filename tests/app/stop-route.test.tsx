@@ -28,11 +28,7 @@ jest.mock('@/features/map/hooks/use-device-location', () => ({
 
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(
-    (
-      selector: (state: {
-        locationUpdateIntervalSeconds: number;
-      }) => unknown
-    ) =>
+    (selector: (state: { locationUpdateIntervalSeconds: number }) => unknown) =>
       selector({
         locationUpdateIntervalSeconds: 20,
       })
