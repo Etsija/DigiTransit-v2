@@ -31,6 +31,7 @@ type UseDeviceLocationOptions = {
 type UseDeviceLocationResult = {
   coordinates: Coordinates | null;
   permission: DeviceLocationPermission;
+  hasRequestedPermission: boolean;
   isFixed: boolean;
   isLoading: boolean;
   error: string | null;
@@ -44,6 +45,7 @@ const DEFAULT_PERMISSION: DeviceLocationPermission = {
 const initialLocationState: UseDeviceLocationResult = {
   coordinates: null,
   permission: DEFAULT_PERMISSION,
+  hasRequestedPermission: false,
   isFixed: false,
   isLoading: false,
   error: null,
@@ -52,7 +54,6 @@ const initialLocationState: UseDeviceLocationResult = {
 const deviceLocationStore = createStore<UseDeviceLocationResult>()(() => initialLocationState);
 
 let nextConsumerId = 0;
-let hasRequestedPermission = false;
 let hasAcquiredLocation = false;
 let activeRunToken = 0;
 let activeSubscription: LocationSubscription | null = null;
@@ -87,6 +88,17 @@ function clearWatcher() {
   activeSubscription = null;
 }
 
+export function __resetDeviceLocationTestState() {
+  clearWatcher();
+  deviceLocationStore.setState(initialLocationState);
+  nextConsumerId = 0;
+  hasAcquiredLocation = false;
+  activeRunToken = 0;
+  activeIntervalSeconds = null;
+  isSyncing = false;
+  activeConsumers.clear();
+}
+
 function applyLocation(location: LocationObject, fixed: boolean) {
   hasAcquiredLocation = true;
   setLocationState({
@@ -106,7 +118,7 @@ function resolveRequestedIntervalSeconds() {
   return nextInterval;
 }
 
-async function syncTracking() {
+async function syncTracking(forcePermissionRequest = false) {
   const requestedIntervalSeconds = resolveRequestedIntervalSeconds();
 
   if (requestedIntervalSeconds === null) {
@@ -119,6 +131,7 @@ async function syncTracking() {
   }
 
   if (
+    !forcePermissionRequest &&
     activeIntervalSeconds === requestedIntervalSeconds &&
     (activeSubscription !== null || isSyncing)
   ) {
@@ -140,8 +153,15 @@ async function syncTracking() {
 
     let resolvedPermission = currentPermission;
 
-    if (currentPermission.status === 'undetermined' && !hasRequestedPermission) {
-      hasRequestedPermission = true;
+    const locationState = deviceLocationStore.getState();
+    const hasResolvedPermissionInSession = locationState.permission.status !== 'idle';
+
+    if (
+      currentPermission.status !== 'granted' &&
+      (forcePermissionRequest || !locationState.hasRequestedPermission) &&
+      (currentPermission.canAskAgain || !hasResolvedPermissionInSession)
+    ) {
+      setLocationState({ hasRequestedPermission: true });
       resolvedPermission = await requestForegroundPermissionsAsync();
 
       if (runToken !== activeRunToken) {
@@ -229,6 +249,19 @@ async function syncTracking() {
       setLocationState({ isLoading: false });
     }
   }
+}
+
+export async function requestDeviceLocationPermission() {
+  const { canAskAgain } = deviceLocationStore.getState().permission;
+  const { hasRequestedPermission } = deviceLocationStore.getState();
+
+  if ((!canAskAgain && hasRequestedPermission) || activeConsumers.size === 0) {
+    return;
+  }
+
+  clearWatcher();
+  activeIntervalSeconds = null;
+  await syncTracking(true);
 }
 
 export function useDeviceLocation({

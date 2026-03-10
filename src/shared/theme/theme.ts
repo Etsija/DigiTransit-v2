@@ -35,6 +35,7 @@ const colors = {
     realtime: '#4ADE80',
     estimated: '#FBBF24',
     error: '#F87171',
+    homeStop: '#F43F5E',
   },
 
   card: {
@@ -174,4 +175,4 @@ export const theme = {
 } as const;
 
 export type TransportMode = keyof typeof colors.transport;
-export type StatusType = 'realtime' | 'estimated';
+export type StatusType = 'realtime' | 'estimated' | 'homeStop';

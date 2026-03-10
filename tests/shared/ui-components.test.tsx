@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import { View } from 'react-native';
 
@@ -136,6 +136,48 @@ describe('Transport & Status UI Components', () => {
         'Keskusta, bus, stop, V:5678, 64 metres, home pinned'
       );
     });
+
+    it('supports long-press interaction without changing button semantics', () => {
+      const onLongPress = jest.fn();
+      const { getByRole } = render(
+        <StopCard
+          name='Keskusta'
+          code='V:5678'
+          transportMode='bus'
+          onPress={() => {}}
+          onLongPress={onLongPress}
+        />
+      );
+
+      fireEvent(getByRole('button'), 'longPress');
+
+      expect(onLongPress).toHaveBeenCalledTimes(1);
+      expect(getByRole('button').props.accessibilityRole).toBe('button');
+    });
+
+    it('does not fire the normal press callback after a long press', () => {
+      jest.useFakeTimers();
+      const onPress = jest.fn();
+      const onLongPress = jest.fn();
+      const { getByRole } = render(
+        <StopCard
+          name='Keskusta'
+          code='V:5678'
+          transportMode='bus'
+          onPress={onPress}
+          onLongPress={onLongPress}
+        />
+      );
+
+      fireEvent(getByRole('button'), 'longPress');
+      fireEvent(getByRole('button'), 'pressOut');
+      fireEvent.press(getByRole('button'));
+      jest.runAllTimers();
+
+      expect(onLongPress).toHaveBeenCalledTimes(1);
+      expect(onPress).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
   });
 
   describe('StopHeaderCard', () => {
@@ -224,6 +266,20 @@ describe('Transport & Status UI Components', () => {
       );
 
       expect(getByRole('button')).toBeTruthy();
+    });
+
+    it('renders a dedicated home-stop marker variant', () => {
+      const { getByLabelText, getByText } = render(
+        <MapMarker
+          transportMode='bus'
+          label='Bus stop Keskusta, home stop'
+          size='near'
+          isHomeStop
+        />
+      );
+
+      expect(getByLabelText('Bus stop Keskusta, home stop')).toBeTruthy();
+      expect(getByText('ion:home')).toBeTruthy();
     });
   });
 

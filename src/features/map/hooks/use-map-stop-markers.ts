@@ -22,7 +22,11 @@ export function getMarkerSizeForDistance(distanceMeters: number, maxDistanceMete
 
 export function createMapStopMarkers(
   nearbyStops: NearbyStop[],
-  options?: { maxDistanceMeters?: number; onSelectStop?: (stopId: string) => void }
+  options?: {
+    homeStopId?: string | null;
+    maxDistanceMeters?: number;
+    onSelectStop?: (stopId: string) => void;
+  }
 ): PlatformMapMarker[] {
   const maxDistanceMeters =
     options?.maxDistanceMeters &&
@@ -38,7 +42,10 @@ export function createMapStopMarkers(
     longitude: stop.longitude,
     transportMode: stop.transportMode ?? 'bus',
     size: getMarkerSizeForDistance(stop.distanceMeters, maxDistanceMeters),
-    accessibilityLabel: `${stop.name}, ${stop.distanceMeters} meters away`,
+    isHomeStop: options?.homeStopId === stop.gtfsId,
+    accessibilityLabel: `${stop.name}, ${stop.distanceMeters} meters away${
+      options?.homeStopId === stop.gtfsId ? ', home stop' : ''
+    }`,
     onPress: options?.onSelectStop
       ? () => {
           options.onSelectStop?.(stop.gtfsId);

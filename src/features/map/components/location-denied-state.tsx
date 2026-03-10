@@ -5,10 +5,20 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { theme } from '@/shared/theme/theme';
 
 type LocationDeniedStateProps = {
+  canRequestAgain?: boolean;
   onOpenSettings: () => void;
+  onRequestPermission?: () => void;
 };
 
-export function LocationDeniedState({ onOpenSettings }: LocationDeniedStateProps) {
+export function LocationDeniedState({
+  canRequestAgain = false,
+  onOpenSettings,
+  onRequestPermission,
+}: LocationDeniedStateProps) {
+  const buttonLabel = canRequestAgain ? 'Allow location access' : 'Enable location in settings';
+  const accessibilityLabel = canRequestAgain ? 'Request location permission' : 'Open app settings';
+  const onPress = canRequestAgain && onRequestPermission ? onRequestPermission : onOpenSettings;
+
   return (
     <View style={styles.container}>
       <EmptyState
@@ -17,11 +27,11 @@ export function LocationDeniedState({ onOpenSettings }: LocationDeniedStateProps
       />
       <Pressable
         accessibilityRole='button'
-        accessibilityLabel='Open app settings'
-        onPress={onOpenSettings}
+        accessibilityLabel={accessibilityLabel}
+        onPress={onPress}
         style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
       >
-        <Text style={styles.buttonText}>Enable location in settings</Text>
+        <Text style={styles.buttonText}>{buttonLabel}</Text>
       </Pressable>
     </View>
   );
@@ -34,6 +44,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.card.border,
     backgroundColor: 'rgba(0, 0, 0, 0.72)',
     overflow: 'hidden',
+    marginBottom: theme.layout.tabBarHeight + theme.spacing.xl,
   },
   button: {
     minHeight: theme.layout.minTouchTarget,

@@ -42,14 +42,17 @@ describe('use-map-stop-markers helpers', () => {
           routePatterns: [],
         },
       ],
-      { maxDistanceMeters: 250, onSelectStop }
+      { homeStopId: 'HSL:near', maxDistanceMeters: 250, onSelectStop }
     );
 
     expect(markers[0]?.size).toBeGreaterThan(markers[1]?.size ?? 0);
+    expect(markers[0]?.isHomeStop).toBe(true);
+    expect(markers[0]?.accessibilityLabel).toContain('home stop');
     expect(markers[1]).toMatchObject({
       id: 'HSL:far',
       stopId: 'HSL:far',
       transportMode: 'bus',
+      isHomeStop: false,
     });
 
     markers[0]?.onPress?.();

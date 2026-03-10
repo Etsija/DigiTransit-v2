@@ -11,7 +11,10 @@ import * as Location from 'expo-location';
 import React from 'react';
 import { Text } from 'react-native';
 
-import { useDeviceLocation } from '@/features/map/hooks/use-device-location';
+import {
+  __resetDeviceLocationTestState,
+  useDeviceLocation,
+} from '@/features/map/hooks/use-device-location';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 
 jest.mock('expo-glass-effect', () => {
@@ -100,6 +103,7 @@ describe('useDeviceLocation', () => {
   let subscription: LocationSubscription;
 
   beforeEach(() => {
+    __resetDeviceLocationTestState();
     subscription = {
       remove: jest.fn(),
     };
@@ -155,8 +159,11 @@ describe('useDeviceLocation', () => {
     expect(getByText('60.171°N, 24.941°E')).toBeTruthy();
   });
 
-  it('reflects denied permission without prompting in a loop and skips location tracking', async () => {
+  it('reflects denied permission after one failed request attempt and skips location tracking', async () => {
     mockGetForegroundPermissionsAsync.mockResolvedValue(
+      createPermissionResponse(PermissionStatus.DENIED, false)
+    );
+    mockRequestForegroundPermissionsAsync.mockResolvedValue(
       createPermissionResponse(PermissionStatus.DENIED, false)
     );
 
@@ -172,11 +179,27 @@ describe('useDeviceLocation', () => {
     rerender(<Harness />);
 
     await waitFor(() => {
-      expect(mockRequestForegroundPermissionsAsync).not.toHaveBeenCalled();
+      expect(mockRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
     });
 
     expect(mockWatchPositionAsync).not.toHaveBeenCalled();
     expect(mockGetCurrentPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('requests permission when the current status is denied but can still be requested', async () => {
+    mockGetForegroundPermissionsAsync.mockResolvedValue(
+      createPermissionResponse(PermissionStatus.DENIED, true)
+    );
+
+    const { getByTestId } = render(<Harness />);
+
+    await waitFor(() => {
+      const state = JSON.parse(getByTestId('state').props.children);
+      expect(state.permission.status).toBe('granted');
+      expect(state.coordinates).toEqual({ latitude: 60.1699, longitude: 24.9384 });
+    });
+
+    expect(mockRequestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
   });
 
   it('removes the watcher subscription when the hook unmounts', async () => {

@@ -1,18 +1,27 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { TransportIcon } from '@/shared/icons';
+import { AppIcon, TransportIcon } from '@/shared/icons';
 import { theme, TransportMode } from '@/shared/theme/theme';
 
 export type MapMarkerProps = {
   transportMode: TransportMode;
   label: string;
   size: 'base' | 'near' | number;
+  isHomeStop?: boolean;
   onPress?: () => void;
 };
 
-export function MapMarker({ transportMode, label, size, onPress }: MapMarkerProps) {
-  const transportColor = theme.colors.transport[transportMode];
+export function MapMarker({
+  transportMode,
+  label,
+  size,
+  isHomeStop = false,
+  onPress,
+}: MapMarkerProps) {
+  const markerColor = isHomeStop
+    ? theme.colors.status.homeStop
+    : theme.colors.transport[transportMode];
   const markerSize =
     typeof size === 'number'
       ? Math.min(theme.layout.markerSizeNear, Math.max(theme.layout.markerSizeBase, size))
@@ -25,10 +34,15 @@ export function MapMarker({ transportMode, label, size, onPress }: MapMarkerProp
       <View
         style={[
           styles.marker,
-          { width: markerSize, height: markerSize, backgroundColor: transportColor },
+          isHomeStop && styles.homeMarker,
+          { width: markerSize, height: markerSize, backgroundColor: markerColor },
         ]}
       >
-        <TransportIcon mode={transportMode} size={iconSize} color={theme.colors.text.primary} />
+        {isHomeStop ? (
+          <AppIcon name='home' size={iconSize} color={theme.colors.text.primary} />
+        ) : (
+          <TransportIcon mode={transportMode} size={iconSize} color={theme.colors.text.primary} />
+        )}
       </View>
     </View>
   );
@@ -61,5 +75,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: theme.borderWidth.marker,
     borderColor: `${theme.colors.text.primary}4d`,
+  },
+  homeMarker: {
+    borderColor: `${theme.colors.status.homeStop}cc`,
+    shadowColor: theme.colors.status.homeStop,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
   },
 });

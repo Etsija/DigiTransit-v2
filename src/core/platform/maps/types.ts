@@ -14,6 +14,7 @@ export type PlatformMapMarker = {
   longitude: number;
   transportMode: TransportMode;
   size: number;
+  isHomeStop?: boolean;
   accessibilityLabel?: string;
   onPress?: () => void;
 };

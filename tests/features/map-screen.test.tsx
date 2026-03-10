@@ -40,6 +40,7 @@ jest.mock('@/core/platform/maps/map-view', () => {
 
 jest.mock('@/features/map/hooks/use-device-location', () => ({
   useDeviceLocation: jest.fn(),
+  requestDeviceLocationPermission: jest.fn(),
 }));
 
 jest.mock('@/features/stops/hooks/use-nearby-stops', () => ({
@@ -57,6 +58,11 @@ describe('MapScreen', () => {
   const { useDeviceLocation } = jest.requireMock('@/features/map/hooks/use-device-location') as {
     useDeviceLocation: jest.Mock;
   };
+  const { requestDeviceLocationPermission } = jest.requireMock(
+    '@/features/map/hooks/use-device-location'
+  ) as {
+    requestDeviceLocationPermission: jest.Mock;
+  };
   const { useNearbyStops } = jest.requireMock('@/features/stops/hooks/use-nearby-stops') as {
     useNearbyStops: jest.Mock;
   };
@@ -73,12 +79,19 @@ describe('MapScreen', () => {
         selector: (state: {
           locationUpdateIntervalSeconds: number;
           searchRadiusMeters: number;
+          homeStop: { gtfsId: string } | null;
         }) => number
-      ) => selector({ locationUpdateIntervalSeconds: 20, searchRadiusMeters: 250 })
+      ) =>
+        selector({
+          locationUpdateIntervalSeconds: 20,
+          searchRadiusMeters: 250,
+          homeStop: null,
+        })
     );
     useDeviceLocation.mockReturnValue({
       coordinates: { latitude: 60.1699, longitude: 24.9384 },
       permission: { status: 'granted', canAskAgain: true },
+      hasRequestedPermission: true,
       isFixed: true,
       isLoading: false,
       error: null,
@@ -118,6 +131,7 @@ describe('MapScreen', () => {
     useDeviceLocation.mockReturnValue({
       coordinates: { latitude: 60.1711, longitude: 24.9412 },
       permission: { status: 'granted', canAskAgain: true },
+      hasRequestedPermission: true,
       isFixed: true,
       isLoading: false,
       error: null,
@@ -134,6 +148,7 @@ describe('MapScreen', () => {
     useDeviceLocation.mockReturnValue({
       coordinates: null,
       permission: { status: 'denied', canAskAgain: false },
+      hasRequestedPermission: true,
       isFixed: false,
       isLoading: false,
       error: null,
@@ -160,6 +175,30 @@ describe('MapScreen', () => {
     expect(openSettingsSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('retries the permission request instead of opening settings when the app can still ask again', async () => {
+    useDeviceLocation.mockReturnValue({
+      coordinates: null,
+      permission: { status: 'denied', canAskAgain: true },
+      hasRequestedPermission: false,
+      isFixed: false,
+      isLoading: false,
+      error: null,
+    });
+
+    const { getByRole, getByText } = render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(getByText('Allow location access')).toBeTruthy();
+    });
+
+    expect(requestDeviceLocationPermission).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(getByRole('button', { name: 'Request location permission' }));
+
+    expect(requestDeviceLocationPermission).toHaveBeenCalledTimes(2);
+    expect(openSettingsSpy).not.toHaveBeenCalled();
+  });
+
   it('renders through the shared platform adapter boundary', () => {
     const { getByTestId } = render(<MapScreen />);
 
@@ -168,6 +207,51 @@ describe('MapScreen', () => {
     expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
     expect(getByTestId('live-map-surface').props.showUserLocation).toBe(true);
     expect(getByTestId('live-map-surface').props.markers).toEqual([]);
+  });
+
+  it('marks the pinned home stop distinctly in the map marker payload', () => {
+    useSettingsStore.mockImplementation(
+      (
+        selector: (state: {
+          locationUpdateIntervalSeconds: number;
+          searchRadiusMeters: number;
+          homeStop: { gtfsId: string } | null;
+        }) => unknown
+      ) =>
+        selector({
+          locationUpdateIntervalSeconds: 20,
+          searchRadiusMeters: 250,
+          homeStop: { gtfsId: 'HSL:1002' },
+        })
+    );
+    useNearbyStops.mockReturnValue({
+      data: [
+        {
+          gtfsId: 'HSL:1002',
+          name: 'Central station',
+          code: '1002',
+          zoneId: 'A',
+          distanceMeters: 120,
+          latitude: 60.17,
+          longitude: 24.94,
+          transportMode: 'tram',
+          parentStationName: 'Central',
+          routePatterns: [{ label: '4', mode: 'tram' }],
+        },
+      ],
+      isFetching: false,
+      status: 'success',
+    });
+
+    const { getByTestId } = render(<MapScreen />);
+
+    expect(getByTestId('live-map-surface').props.markers).toEqual([
+      expect.objectContaining({
+        id: 'HSL:1002',
+        isHomeStop: true,
+        accessibilityLabel: 'Central station, 120 meters away, home stop',
+      }),
+    ]);
   });
 
   it('measures when the map becomes visible', () => {
@@ -188,6 +272,7 @@ describe('MapScreen', () => {
     useDeviceLocation.mockReturnValue({
       coordinates: null,
       permission: { status: 'denied', canAskAgain: false },
+      hasRequestedPermission: true,
       isFixed: false,
       isLoading: false,
       error: null,
@@ -212,6 +297,7 @@ describe('MapScreen', () => {
     useDeviceLocation.mockReturnValue({
       coordinates: null,
       permission: { status: 'denied', canAskAgain: false },
+      hasRequestedPermission: true,
       isFixed: false,
       isLoading: false,
       error: null,
