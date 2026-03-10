@@ -32,6 +32,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
   const locationUpdateIntervalSeconds = useSettingsStore(
     (state) => state.locationUpdateIntervalSeconds
   );
+  const searchRadiusMeters = useSettingsStore((state) => state.searchRadiusMeters);
   const homeStop = useSettingsStore((state) => state.homeStop);
   const updateSettings = useSettingsStore((state) => state.updateSettings);
   const [pendingHomeStop, setPendingHomeStop] = React.useState<{
@@ -135,12 +136,10 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
                   canRequestAgain={
                     location.permission.canAskAgain || !location.hasRequestedPermission
                   }
+                  message='Enable location access to see nearby stops'
                   onOpenSettings={() => void Linking.openSettings()}
                   onRequestPermission={() => void requestDeviceLocationPermission()}
                 />
-                <Text style={styles.supportingText}>
-                  Enable location access in your device settings to show nearby stops.
-                </Text>
               </View>
             ) : null}
 
@@ -190,7 +189,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
             {showNoStopsState ? (
               <EmptyState
                 title='No nearby stops found'
-                message='Try increasing the search radius in Settings and refresh your location.'
+                message={`No stops within ${searchRadiusMeters}m - try increasing search radius in Settings`}
               />
             ) : null}
 
@@ -309,13 +308,5 @@ const styles = StyleSheet.create({
   },
   flexFill: {
     flex: 1,
-  },
-  supportingText: {
-    color: theme.colors.text.secondary,
-    fontSize: theme.typography.sm.fontSize,
-    fontWeight: theme.typography.sm.fontWeight,
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
   },
 });

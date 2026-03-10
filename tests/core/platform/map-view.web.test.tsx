@@ -112,6 +112,7 @@ describe('PlatformMapView web', () => {
   });
 
   it('renders and cleans up mapbox markers through the shared marker contract', () => {
+    const onPress = jest.fn();
     const cleanup = syncMapboxMarkers({} as never, [
       {
         id: 'stop-1',
@@ -120,12 +121,20 @@ describe('PlatformMapView web', () => {
         transportMode: 'bus',
         size: 44,
         accessibilityLabel: 'Central Railway stop',
+        onPress,
       },
     ]);
 
     expect(mockCreateRoot).toHaveBeenCalledTimes(1);
     expect(mockSetLngLat).toHaveBeenCalledWith([24.94, 60.17]);
     expect(mockAddTo).toHaveBeenCalledTimes(1);
+    expect(mockCreateRoot.mock.results[0]?.value.render).toHaveBeenCalledTimes(1);
+
+    const renderedMarker = mockCreateRoot.mock.results[0]?.value.render.mock.calls[0]?.[0];
+
+    renderedMarker.props.onPress();
+
+    expect(onPress).toHaveBeenCalledTimes(1);
 
     cleanup();
 

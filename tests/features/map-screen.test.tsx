@@ -200,13 +200,65 @@ describe('MapScreen', () => {
   });
 
   it('renders through the shared platform adapter boundary', () => {
-    const { getByTestId } = render(<MapScreen />);
+    const { getByTestId } = render(<MapScreen onSelectStop={jest.fn()} />);
 
     expect(PlatformMapView).toHaveBeenCalled();
     expect(getByTestId('live-map-surface').props.latitude).toBe(60.1699);
     expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
     expect(getByTestId('live-map-surface').props.showUserLocation).toBe(true);
     expect(getByTestId('live-map-surface').props.markers).toEqual([]);
+  });
+
+  it('shows an API outage banner while keeping the live map mounted', async () => {
+    useNearbyStops.mockReturnValue({
+      data: undefined,
+      error: new Error('Network error'),
+      isError: true,
+      isFetching: false,
+      isPending: false,
+      status: 'error',
+    });
+
+    const { getByTestId, getByText, queryByText } = render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('live-map-surface')).toBeTruthy();
+      expect(getByText('DigiTransit API unavailable')).toBeTruthy();
+    });
+
+    expect(queryByText('No nearby stops found')).toBeNull();
+  });
+
+  it('removes the API outage banner automatically when nearby stops recover', async () => {
+    useNearbyStops.mockReturnValue({
+      data: undefined,
+      error: new Error('Network error'),
+      isError: true,
+      isFetching: false,
+      isPending: false,
+      status: 'error',
+    });
+
+    const screen = render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('DigiTransit API unavailable')).toBeTruthy();
+    });
+
+    useNearbyStops.mockReturnValue({
+      data: [],
+      error: null,
+      isError: false,
+      isFetching: false,
+      isPending: false,
+      status: 'success',
+    });
+
+    screen.rerender(<MapScreen />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('DigiTransit API unavailable')).toBeNull();
+    });
   });
 
   it('marks the pinned home stop distinctly in the map marker payload', () => {
@@ -243,7 +295,7 @@ describe('MapScreen', () => {
       status: 'success',
     });
 
-    const { getByTestId } = render(<MapScreen />);
+    const { getByTestId } = render(<MapScreen onSelectStop={jest.fn()} />);
 
     expect(getByTestId('live-map-surface').props.markers).toEqual([
       expect.objectContaining({
@@ -252,6 +304,50 @@ describe('MapScreen', () => {
         accessibilityLabel: 'Central station, 120 meters away, home stop',
       }),
     ]);
+  });
+
+  it('wires marker presses into stable marker callbacks', () => {
+    const onSelectStop = jest.fn();
+    useNearbyStops.mockReturnValue({
+      data: [
+        {
+          gtfsId: 'HSL:1001',
+          name: 'Central station',
+          code: '1001',
+          zoneId: 'A',
+          distanceMeters: 20,
+          latitude: 60.17,
+          longitude: 24.94,
+          transportMode: 'bus',
+          parentStationName: null,
+        },
+      ],
+      error: null,
+      isError: false,
+      isFetching: false,
+      isPending: false,
+      status: 'success',
+    });
+
+    const screen = render(<MapScreen onSelectStop={onSelectStop} />);
+    const marker = screen.getByTestId('live-map-surface').props.markers[0];
+
+    expect(marker).toEqual(
+      expect.objectContaining({
+        id: 'HSL:1001',
+        onPress: expect.any(Function),
+      })
+    );
+
+    marker.onPress();
+
+    expect(onSelectStop).toHaveBeenCalledWith('HSL:1001');
+
+    screen.rerender(<MapScreen onSelectStop={onSelectStop} />);
+
+    const nextMarker = screen.getByTestId('live-map-surface').props.markers[0];
+
+    expect(nextMarker.onPress).toBe(marker.onPress);
   });
 
   it('measures when the map becomes visible', () => {

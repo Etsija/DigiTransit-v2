@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 
 import { PlatformMapView } from '@/core/platform/maps/map-view.native';
@@ -76,6 +76,7 @@ describe('PlatformMapView native', () => {
   });
 
   it('accepts marker scaffolding without changing the adapter boundary again', () => {
+    const onPress = jest.fn();
     const { getAllByLabelText, getByTestId } = render(
       <PlatformMapView
         latitude={60.1699}
@@ -88,6 +89,7 @@ describe('PlatformMapView native', () => {
             size: 44,
             transportMode: 'bus',
             accessibilityLabel: 'Central Railway stop',
+            onPress,
           },
         ]}
         showUserLocation
@@ -96,6 +98,10 @@ describe('PlatformMapView native', () => {
 
     expect(getAllByLabelText('Central Railway stop').length).toBeGreaterThan(0);
     expect(getByTestId('map-marker-stop-1').props.tracksViewChanges).toBe(true);
+
+    fireEvent.press(getByTestId('map-marker-stop-1'));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
 
     act(() => {
       jest.advanceTimersByTime(250);
