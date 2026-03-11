@@ -96,6 +96,10 @@ describe('ShowcaseScreen', () => {
     const { getAllByLabelText, getAllByText, getByText, getByLabelText } = renderScreen();
 
     expect(getByText('Showcase')).toBeTruthy();
+    expect(getByText('Component gallery')).toBeTruthy();
+    expect(
+      getByText('Preview the shared UI components and live API examples from one screen.')
+    ).toBeTruthy();
     expect(getByText('GlassCard')).toBeTruthy();
     expect(getByText('CoordinatesBar')).toBeTruthy();
     expect(getByText('StopCard')).toBeTruthy();
