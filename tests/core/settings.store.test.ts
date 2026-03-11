@@ -319,6 +319,36 @@ describe('settings store', () => {
     });
   });
 
+  it('removes the canonical home stop storage key when the home stop is cleared', async () => {
+    const storage = createMemoryStorage();
+    const store = createSettingsStore(storage);
+
+    await hydrateStore(store);
+
+    store.getState().updateSettings({
+      homeStop: {
+        gtfsId: 'HSL:1002',
+        name: 'Central station',
+        transportMode: 'tram',
+      },
+    });
+
+    await Promise.resolve();
+
+    store.getState().updateSettings({
+      homeStop: null,
+    });
+
+    await Promise.resolve();
+
+    const persistedSettings = JSON.parse(
+      (await readStorageEntry(storage, SETTINGS_STORAGE_KEY)) as string
+    );
+
+    expect(persistedSettings.state.homeStop).toBeUndefined();
+    expect(await readStorageEntry(storage, HOME_STOP_STORAGE_KEY)).toBeNull();
+  });
+
   it('hydrates home stop from the canonical home-stop storage key', async () => {
     const storage = createMemoryStorage({
       [SETTINGS_STORAGE_KEY]: JSON.stringify({

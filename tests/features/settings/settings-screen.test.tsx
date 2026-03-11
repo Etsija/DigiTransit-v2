@@ -2,18 +2,19 @@
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { SettingsScreenContent } from '@/features/settings/settings-screen';
+import { theme } from '@/shared/theme/theme';
 
 type MockSettingsState = {
   searchRadiusMeters: number;
   locationUpdateIntervalSeconds: number;
   stopsPollingIntervalSeconds: number;
   departuresPollingIntervalSeconds: number;
-  homeStop: { gtfsId: string; name: string; transportMode: null } | null;
+  homeStop: { gtfsId: string; name: string; transportMode: string | null } | null;
   pushNotificationsEnabled: boolean;
   notificationLeadTimeMinutes: number;
   updateSettings: jest.Mock;
@@ -54,10 +55,16 @@ jest.mock('@/shared/icons', () => ({
     const { Text } = require('react-native');
     return <Text>{`icon:${name}`}</Text>;
   },
+  TransportIcon: ({ mode }: { mode: string }) => {
+    const React = require('react');
+    const { Text } = require('react-native');
+    return <Text>{`transport:${mode}`}</Text>;
+  },
 }));
 
 describe('SettingsScreenContent', () => {
   let settingsStore: StoreApi<MockSettingsState>;
+  const homeStopEmptyState = 'No home stop set — long-press a stop in the Stops list to pin one';
   const { useSettingsStore } = jest.requireMock('@/core/store/settings.store') as {
     useSettingsStore: jest.Mock;
   };
@@ -110,6 +117,74 @@ describe('SettingsScreenContent', () => {
     expect(screen.getByRole('button', { name: 'Open Showcase' })).toBeTruthy();
     expect(screen.getByLabelText('App version 1.0.0')).toBeTruthy();
     expect(screen.getByText('No changes to save')).toBeTruthy();
+    expect(screen.getByText(homeStopEmptyState)).toBeTruthy();
+    expect(screen.getByLabelText(`Home stop, ${homeStopEmptyState}`)).toBeTruthy();
+  });
+
+  it('shows the pinned home stop with transport type, pinned cue, and a clear action', () => {
+    settingsStore.setState({
+      homeStop: {
+        gtfsId: 'HSL:1002',
+        name: 'Central station',
+        transportMode: 'tram',
+      },
+    });
+
+    render(<SettingsScreenContent />);
+
+    expect(screen.getByLabelText('Home stop')).toBeTruthy();
+    expect(screen.getByText('Central station')).toBeTruthy();
+    expect(screen.getByText('Transport type: Tram')).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        'Home stop, Central station, transport type Tram, managed from the Stops tab.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Home stop pinned')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Clear home stop' })).toBeTruthy();
+  });
+
+  it('keeps the clear action at the minimum touch target size', () => {
+    settingsStore.setState({
+      homeStop: {
+        gtfsId: 'HSL:1002',
+        name: 'Central station',
+        transportMode: 'tram',
+      },
+    });
+
+    render(<SettingsScreenContent />);
+
+    const clearButton = screen.getByRole('button', { name: 'Clear home stop' });
+    const resolvedStyle =
+      typeof clearButton.props.style === 'function'
+        ? clearButton.props.style({ pressed: false })
+        : clearButton.props.style;
+    const style = StyleSheet.flatten(resolvedStyle);
+
+    expect(style.minHeight).toBe(theme.layout.minTouchTarget);
+    expect(style.minWidth).toBe(theme.layout.minTouchTarget);
+  });
+
+  it('clears the pinned home stop and falls back to the exact empty-state guidance', () => {
+    settingsStore.setState({
+      homeStop: {
+        gtfsId: 'HSL:1002',
+        name: 'Central station',
+        transportMode: 'tram',
+      },
+    });
+
+    render(<SettingsScreenContent />);
+
+    fireEvent.press(screen.getByRole('button', { name: 'Clear home stop' }));
+
+    expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+      homeStop: null,
+    });
+    expect(screen.getByText(homeStopEmptyState)).toBeTruthy();
+    expect(screen.getByLabelText(`Home stop, ${homeStopEmptyState}`)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear home stop' })).toBeNull();
   });
 
   it('initializes editable fields from the store and keeps save disabled until something changes', () => {
