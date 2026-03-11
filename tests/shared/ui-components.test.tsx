@@ -358,6 +358,24 @@ describe('Transport & Status UI Components', () => {
 
       expect(getByText('7A')).toBeTruthy();
       expect(getByText('14:35')).toBeTruthy();
+      expect(getByText('Default alert: 10 min before departure')).toBeTruthy();
+      expect(getByText('10 min')).toBeTruthy();
+    });
+
+    it('marks the stored default lead time as pre-selected', () => {
+      const { getByRole } = render(
+        <DepartureNotificationDialog
+          mode='idle'
+          routeShortName='7A'
+          departureTime='14:35'
+          onNotify={() => {}}
+          onDismiss={() => {}}
+        />
+      );
+
+      expect(getByRole('radio', { name: '10 minutes' }).props.accessibilityState.selected).toBe(
+        true
+      );
     });
 
     it('renders cancel-mode presentation', () => {

@@ -1,3 +1,4 @@
+import { useIsFocused } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -5,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   View,
   type TextInputProps,
@@ -14,6 +16,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { DIGITRANSIT_API_KEY, DIGITRANSIT_API_URL } from '@/core/config/env';
+import {
+  notificationPlatformAdapter,
+  type NotificationPermissionState,
+} from '@/core/platform/notifications';
 import { useSettingsStore } from '@/core/store/settings.store';
 import {
   sanitizeSettingsPatch,
@@ -39,6 +45,13 @@ const editableFieldOrder: EditableSettingKey[] = [
   'stopsPollingIntervalSeconds',
   'departuresPollingIntervalSeconds',
 ];
+
+const commonNotificationLeadTimes = [5, 10, 15];
+const unsupportedNotificationPermissionState: NotificationPermissionState = {
+  supported: false,
+  granted: false,
+  canPrompt: false,
+};
 
 const editableFieldMeta: Record<
   EditableSettingKey,
@@ -145,21 +158,18 @@ function formatTransportModeLabel(transportMode: TransportMode | null | undefine
   return `${transportMode.slice(0, 1).toUpperCase()}${transportMode.slice(1)}`;
 }
 
-function ReadOnlyRow(props: {
-  label: string;
-  value: string;
-  helper: string;
-  accessibilityLabel: string;
-}) {
-  return (
-    <View accessibilityLabel={props.accessibilityLabel} style={styles.row}>
-      <ThemedText type='smallBold'>{props.label}</ThemedText>
-      <ThemedText>{props.value}</ThemedText>
-      <ThemedText themeColor='textSecondary' style={styles.helperText}>
-        {props.helper}
-      </ThemedText>
-    </View>
+function getNotificationLeadTimeOptions(selectedLeadTimeMinutes: number) {
+  return [...new Set([...commonNotificationLeadTimes, selectedLeadTimeMinutes])].sort(
+    (left, right) => left - right
   );
+}
+
+async function readNotificationPermissionState(): Promise<NotificationPermissionState> {
+  try {
+    return await notificationPlatformAdapter.getPermissionState();
+  } catch {
+    return unsupportedNotificationPermissionState;
+  }
 }
 
 function HomeStopRow(props: {
@@ -255,6 +265,110 @@ function HomeStopRow(props: {
   );
 }
 
+function NotificationSwitchRow(props: {
+  value: boolean;
+  disabled: boolean;
+  helper: string;
+  onValueChange: (nextValue: boolean) => void;
+}) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.switchRow}>
+        <View style={styles.switchLabelGroup}>
+          <ThemedText type='smallBold'>Push notifications</ThemedText>
+          <ThemedText themeColor='textSecondary' style={styles.helperText}>
+            {props.helper}
+          </ThemedText>
+        </View>
+
+        <Switch
+          accessibilityLabel='Push notifications'
+          disabled={props.disabled}
+          onValueChange={props.onValueChange}
+          trackColor={{
+            false: theme.colors.card.border,
+            true: theme.colors.link.primary,
+          }}
+          value={props.value}
+        />
+      </View>
+    </View>
+  );
+}
+
+function NotificationLeadTimeRow(props: {
+  selectedLeadTimeMinutes: number;
+  disabled: boolean;
+  expanded: boolean;
+  onPress: () => void;
+  onSelectLeadTime: (minutes: number) => void;
+}) {
+  const options = getNotificationLeadTimeOptions(props.selectedLeadTimeMinutes);
+
+  return (
+    <View style={[styles.row, props.disabled ? styles.disabledRow : null]}>
+      <Pressable
+        accessibilityLabel='Notification lead time'
+        accessibilityRole='button'
+        accessibilityState={{ disabled: props.disabled, expanded: props.expanded }}
+        disabled={props.disabled}
+        onPress={props.onPress}
+        style={({ pressed }) => [
+          styles.leadTimeButton,
+          props.disabled ? styles.disabledRow : null,
+          pressed && !props.disabled ? styles.utilityActionPressed : null,
+        ]}
+      >
+        <View style={styles.leadTimeHeader}>
+          <View style={styles.leadTimeTextGroup}>
+            <ThemedText type='smallBold'>Notification lead time</ThemedText>
+            <ThemedText themeColor='textSecondary' style={styles.helperText}>
+              Default lead time used when departure reminders are scheduled later in the app.
+            </ThemedText>
+          </View>
+
+          <View style={styles.leadTimeValueGroup}>
+            <ThemedText>{`${props.selectedLeadTimeMinutes} minutes`}</ThemedText>
+            <AppIcon
+              color={theme.colors.text.secondary}
+              name={props.expanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+            />
+          </View>
+        </View>
+      </Pressable>
+
+      {props.expanded ? (
+        <View style={styles.leadTimeOptions}>
+          {options.map((option) => {
+            const selected = option === props.selectedLeadTimeMinutes;
+
+            return (
+              <Pressable
+                accessibilityLabel={`${option} minutes`}
+                accessibilityRole='button'
+                key={option}
+                onPress={() => props.onSelectLeadTime(option)}
+                style={({ pressed }) => [
+                  styles.leadTimeOption,
+                  selected ? styles.leadTimeOptionSelected : null,
+                  pressed ? styles.utilityActionPressed : null,
+                ]}
+              >
+                <ThemedText
+                  style={selected ? styles.leadTimeOptionTextSelected : styles.leadTimeOptionText}
+                >
+                  {`${option} min`}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function EditableRow(props: {
   field: EditableSettingKey;
   value: string;
@@ -294,6 +408,7 @@ function EditableRow(props: {
 
 export function SettingsScreenContent() {
   const router = useRouter();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const appVersion = Constants.expoConfig?.version ?? '0.0.0';
   const apiKeyFingerprint = maskApiKey(DIGITRANSIT_API_KEY);
@@ -335,10 +450,53 @@ export function SettingsScreenContent() {
   const [draftValues, setDraftValues] = React.useState<DraftValues>(() =>
     toDraftValues(persistedValues)
   );
+  const [notificationPermissionState, setNotificationPermissionState] =
+    React.useState<NotificationPermissionState>(unsupportedNotificationPermissionState);
+  const [hasLoadedNotificationPermission, setHasLoadedNotificationPermission] =
+    React.useState(false);
+  const [isUpdatingNotificationPreference, setIsUpdatingNotificationPreference] =
+    React.useState(false);
+  const [leadTimeExpanded, setLeadTimeExpanded] = React.useState(false);
 
   React.useEffect(() => {
     setDraftValues(toDraftValues(persistedValues));
   }, [persistedValues]);
+
+  React.useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function syncNotificationPermissionState() {
+      const nextPermissionState = await readNotificationPermissionState();
+
+      if (cancelled) {
+        return;
+      }
+
+      setNotificationPermissionState(nextPermissionState);
+      setHasLoadedNotificationPermission(true);
+
+      if (pushNotificationsEnabled && !nextPermissionState.granted) {
+        updateSettings({ pushNotificationsEnabled: false });
+        setLeadTimeExpanded(false);
+      }
+    }
+
+    void syncNotificationPermissionState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isFocused, pushNotificationsEnabled, updateSettings]);
+
+  React.useEffect(() => {
+    if (!pushNotificationsEnabled) {
+      setLeadTimeExpanded(false);
+    }
+  }, [pushNotificationsEnabled]);
 
   const validationErrors = React.useMemo(() => getValidationErrors(draftValues), [draftValues]);
   const hasErrors = Object.keys(validationErrors).length > 0;
@@ -416,6 +574,15 @@ export function SettingsScreenContent() {
     theme.layout.minTouchTarget + theme.spacing.md * 2 + theme.spacing.sm + footerBottomInset;
   const scrollBottomPadding =
     stickyFooterHeight + theme.layout.tabBarHeight + theme.spacing.xl + theme.spacing.lg;
+  const notificationsEnabled = pushNotificationsEnabled && notificationPermissionState.granted;
+  const notificationToggleDisabled =
+    isUpdatingNotificationPreference || hasLoadedNotificationPermission === false
+      ? isUpdatingNotificationPreference
+      : !notificationPermissionState.supported;
+  const notificationHelperText =
+    notificationToggleDisabled && !notificationPermissionState.supported
+      ? 'Push notifications are not available on web in this MVP.'
+      : 'Enable departure alerts and choose the default reminder lead time.';
   const handleOpenShowcase = React.useCallback(() => {
     const href = buildShowcaseHref();
 
@@ -429,6 +596,72 @@ export function SettingsScreenContent() {
   const handleClearHomeStop = React.useCallback(() => {
     updateSettings({ homeStop: null });
   }, [updateSettings]);
+  const handleNotificationToggle = React.useCallback(
+    async (nextValue: boolean) => {
+      if (isUpdatingNotificationPreference) {
+        return;
+      }
+
+      if (!nextValue) {
+        updateSettings({ pushNotificationsEnabled: false });
+        setLeadTimeExpanded(false);
+        return;
+      }
+
+      setIsUpdatingNotificationPreference(true);
+
+      try {
+        const currentPermissionState = await readNotificationPermissionState();
+
+        setNotificationPermissionState(currentPermissionState);
+        setHasLoadedNotificationPermission(true);
+
+        if (currentPermissionState.granted) {
+          await notificationPlatformAdapter.prepareRuntime();
+          updateSettings({ pushNotificationsEnabled: true });
+          return;
+        }
+
+        if (!currentPermissionState.supported || !currentPermissionState.canPrompt) {
+          updateSettings({ pushNotificationsEnabled: false });
+          return;
+        }
+
+        const requestedPermissionState = await notificationPlatformAdapter.requestPermission();
+
+        setNotificationPermissionState(requestedPermissionState);
+        setHasLoadedNotificationPermission(true);
+
+        if (requestedPermissionState.granted) {
+          await notificationPlatformAdapter.prepareRuntime();
+        }
+
+        updateSettings({ pushNotificationsEnabled: requestedPermissionState.granted });
+      } catch {
+        setNotificationPermissionState(unsupportedNotificationPermissionState);
+        setHasLoadedNotificationPermission(true);
+        updateSettings({ pushNotificationsEnabled: false });
+        setLeadTimeExpanded(false);
+      } finally {
+        setIsUpdatingNotificationPreference(false);
+      }
+    },
+    [isUpdatingNotificationPreference, updateSettings]
+  );
+  const handleLeadTimePress = React.useCallback(() => {
+    if (!notificationsEnabled) {
+      return;
+    }
+
+    setLeadTimeExpanded((current) => !current);
+  }, [notificationsEnabled]);
+  const handleLeadTimeSelect = React.useCallback(
+    (nextLeadTimeMinutes: number) => {
+      updateSettings({ notificationLeadTimeMinutes: nextLeadTimeMinutes });
+      setLeadTimeExpanded(false);
+    },
+    [updateSettings]
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -456,18 +689,21 @@ export function SettingsScreenContent() {
 
             <HomeStopRow homeStop={homeStop} onClear={handleClearHomeStop} />
 
-            <ReadOnlyRow
-              accessibilityLabel='Push notifications'
-              helper='Notification preferences are shown here now and become editable in Story 4.3.'
-              label='Push notifications'
-              value={pushNotificationsEnabled ? 'Enabled' : 'Disabled'}
+            <NotificationSwitchRow
+              disabled={notificationToggleDisabled}
+              helper={notificationHelperText}
+              onValueChange={(nextValue) => {
+                void handleNotificationToggle(nextValue);
+              }}
+              value={notificationsEnabled}
             />
 
-            <ReadOnlyRow
-              accessibilityLabel='Notification lead time'
-              helper='Lead time remains visible here until the notification settings story is implemented.'
-              label='Notification lead time'
-              value={`${notificationLeadTimeMinutes} minutes`}
+            <NotificationLeadTimeRow
+              disabled={!notificationsEnabled}
+              expanded={leadTimeExpanded}
+              onPress={handleLeadTimePress}
+              onSelectLeadTime={handleLeadTimeSelect}
+              selectedLeadTimeMinutes={notificationLeadTimeMinutes}
             />
           </View>
 
@@ -605,6 +841,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: theme.borderWidth.subtle,
     borderBottomColor: theme.colors.card.border,
   },
+  disabledRow: {
+    opacity: 0.5,
+  },
   homeStopCard: {
     gap: theme.spacing.xs,
     borderRadius: theme.radius.bar,
@@ -619,6 +858,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.md,
+  },
+  switchRow: {
+    minHeight: theme.layout.minTouchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  switchLabelGroup: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  leadTimeButton: {
+    minHeight: theme.layout.minTouchTarget,
+    justifyContent: 'center',
+  },
+  leadTimeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  leadTimeTextGroup: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  leadTimeValueGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  leadTimeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    paddingTop: theme.spacing.xs,
+  },
+  leadTimeOption: {
+    minHeight: theme.layout.minTouchTarget,
+    minWidth: theme.layout.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.bar,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
+    backgroundColor: theme.colors.card.bg,
+    paddingHorizontal: theme.spacing.md,
+  },
+  leadTimeOptionSelected: {
+    backgroundColor: theme.colors.link.primary,
+    borderColor: theme.colors.link.primary,
+  },
+  leadTimeOptionText: {
+    color: theme.colors.text.primary,
+    fontWeight: '600',
+  },
+  leadTimeOptionTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   homeStopPrimaryRow: {
     flexDirection: 'row',

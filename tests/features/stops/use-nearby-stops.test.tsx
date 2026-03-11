@@ -54,10 +54,17 @@ function NearbyStopsHarness(props: {
 function DualNearbyStopsHarness(props: {
   coordinates: { latitude: number; longitude: number } | null;
 }) {
-  useNearbyStops(props);
-  useNearbyStops(props);
+  const firstQuery = useNearbyStops(props);
+  const secondQuery = useNearbyStops(props);
 
-  return <Text>dual</Text>;
+  return (
+    <Text>
+      {JSON.stringify({
+        firstStatus: firstQuery.status,
+        secondStatus: secondQuery.status,
+      })}
+    </Text>
+  );
 }
 
 function SharedLocationNearbyStopsHarness() {
@@ -294,12 +301,17 @@ describe('useNearbyStops', () => {
       },
     });
 
-    renderWithQueryClient(
+    const screen = renderWithQueryClient(
       <DualNearbyStopsHarness coordinates={{ latitude: 60.1699, longitude: 24.9384 }} />
     );
 
     await waitFor(() => {
       expect(mockRequestGraphql).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText(JSON.stringify({ firstStatus: 'success', secondStatus: 'success' }))
+      ).toBeTruthy();
     });
 
     const [, variables] = mockRequestGraphql.mock.calls[0] ?? [];

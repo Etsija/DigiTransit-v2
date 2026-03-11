@@ -102,6 +102,21 @@ jest.mock('@/core/store/settings.store', () => ({
   ),
 }));
 
+jest.mock('@/core/platform/notifications', () => ({
+  notificationPlatformAdapter: {
+    getPermissionState: jest.fn(async () => ({
+      supported: true,
+      granted: false,
+      canPrompt: true,
+    })),
+    requestPermission: jest.fn(async () => ({
+      supported: true,
+      granted: true,
+      canPrompt: true,
+    })),
+  },
+}));
+
 jest.mock('expo-constants', () => ({
   __esModule: true,
   default: {
@@ -154,6 +169,9 @@ jest.mock('expo-router', () => ({
 }));
 
 const devGlobal = globalThis as typeof globalThis & { __DEV__: boolean };
+const { useIsFocused } = jest.requireMock('@react-navigation/native') as {
+  useIsFocused: jest.Mock;
+};
 
 function renderWithQueryClient(node: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -176,6 +194,7 @@ describe('navigation route stubs', () => {
   const originalDev = devGlobal.__DEV__;
 
   beforeEach(() => {
+    useIsFocused.mockReturnValue(true);
     Object.defineProperty(devGlobal, '__DEV__', {
       configurable: true,
       value: true,
@@ -274,7 +293,8 @@ describe('navigation route stubs', () => {
     expect(getByText('Stops screen route (active)')).toBeTruthy();
   });
 
-  it('renders the settings screen with diagnostics and a normal showcase action', () => {
+  it('renders the settings screen with diagnostics and a normal showcase action', async () => {
+    useIsFocused.mockReturnValue(false);
     const { getByRole, getByText } = render(<SettingsScreen />);
 
     expect(getByText('Settings')).toBeTruthy();
@@ -283,7 +303,8 @@ describe('navigation route stubs', () => {
     expect(getByRole('button', { name: 'Open Showcase' })).toBeTruthy();
   });
 
-  it('opens the showcase route with a single settings action tap', () => {
+  it('opens the showcase route with a single settings action tap', async () => {
+    useIsFocused.mockReturnValue(false);
     const navigate = jest.fn();
     const push = jest.fn();
 
@@ -302,7 +323,8 @@ describe('navigation route stubs', () => {
     expect(navigate).toHaveBeenCalledWith(buildShowcaseHref());
   });
 
-  it('keeps the showcase action available in production mode', () => {
+  it('keeps the showcase action available in production mode', async () => {
+    useIsFocused.mockReturnValue(false);
     const navigate = jest.fn();
     const push = jest.fn();
 
