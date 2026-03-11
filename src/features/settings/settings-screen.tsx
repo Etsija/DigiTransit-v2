@@ -19,8 +19,8 @@ import {
   sanitizeSettingsPatch,
   settingsNumericBounds,
 } from '@/features/settings/schema/settings.schema';
-import { AppIcon } from '@/shared/icons';
-import { theme } from '@/shared/theme/theme';
+import { AppIcon, TransportIcon } from '@/shared/icons';
+import { theme, type TransportMode } from '@/shared/theme/theme';
 import { buildShowcaseHref } from '@/types/navigation';
 
 type EditableSettingKey =
@@ -135,6 +135,16 @@ function buildEditableValues(state: EditableValues): EditableValues {
   };
 }
 
+const HOME_STOP_EMPTY_STATE = 'No home stop set — long-press a stop in the Stops list to pin one';
+
+function formatTransportModeLabel(transportMode: TransportMode | null | undefined) {
+  if (!transportMode) {
+    return 'Unknown';
+  }
+
+  return `${transportMode.slice(0, 1).toUpperCase()}${transportMode.slice(1)}`;
+}
+
 function ReadOnlyRow(props: {
   label: string;
   value: string;
@@ -148,6 +158,99 @@ function ReadOnlyRow(props: {
       <ThemedText themeColor='textSecondary' style={styles.helperText}>
         {props.helper}
       </ThemedText>
+    </View>
+  );
+}
+
+function HomeStopRow(props: {
+  homeStop: {
+    gtfsId: string;
+    name: string;
+    transportMode: TransportMode | null;
+  } | null;
+  onClear: () => void;
+}) {
+  const hasHomeStop = Boolean(props.homeStop);
+  const transportModeLabel = formatTransportModeLabel(props.homeStop?.transportMode);
+  const transportColor = props.homeStop?.transportMode
+    ? theme.colors.transport[props.homeStop.transportMode]
+    : theme.colors.text.secondary;
+  const homeStopSummaryLabel = hasHomeStop
+    ? `Home stop, ${props.homeStop?.name}, transport type ${transportModeLabel}, managed from the Stops tab.`
+    : `Home stop, ${HOME_STOP_EMPTY_STATE}`;
+
+  return (
+    <View accessibilityLabel='Home stop' style={styles.row}>
+      <View style={styles.readOnlyRowHeader}>
+        <ThemedText type='smallBold'>Home stop</ThemedText>
+        {hasHomeStop ? (
+          <Pressable
+            accessibilityLabel='Clear home stop'
+            accessibilityRole='button'
+            hitSlop={8}
+            onPress={props.onClear}
+            style={({ pressed }) => [
+              styles.inlineActionButton,
+              pressed && styles.inlineActionPressed,
+            ]}
+          >
+            <ThemedText style={styles.inlineActionText}>Clear</ThemedText>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {hasHomeStop ? (
+        <View accessibilityLabel={homeStopSummaryLabel} accessible style={styles.homeStopCard}>
+          <View style={styles.homeStopPrimaryRow}>
+            <View
+              style={[
+                styles.transportBadge,
+                {
+                  backgroundColor: `${transportColor}${Math.round(
+                    theme.glass.iconBadgeBgOpacity * 255
+                  )
+                    .toString(16)
+                    .padStart(2, '0')}`,
+                },
+              ]}
+            >
+              {props.homeStop?.transportMode ? (
+                <TransportIcon
+                  color={theme.colors.text.primary}
+                  mode={props.homeStop.transportMode}
+                  size={14}
+                />
+              ) : (
+                <AppIcon color={theme.colors.text.primary} name='help-circle-outline' size={14} />
+              )}
+            </View>
+
+            <View style={styles.homeStopTextGroup}>
+              <View style={styles.homeStopNameRow}>
+                <ThemedText>{props.homeStop?.name}</ThemedText>
+                <View
+                  accessibilityLabel='Home stop pinned'
+                  accessibilityRole='image'
+                  style={styles.homePinnedBadge}
+                >
+                  <AppIcon color={theme.colors.text.primary} name='home' size={12} />
+                </View>
+              </View>
+              <ThemedText themeColor='textSecondary' style={styles.helperText}>
+                {`Transport type: ${transportModeLabel}`}
+              </ThemedText>
+            </View>
+          </View>
+
+          <ThemedText themeColor='textSecondary' style={styles.helperText}>
+            Managed from the Stops tab. Long-press a stop there to replace the current home stop.
+          </ThemedText>
+        </View>
+      ) : (
+        <View accessibilityLabel={homeStopSummaryLabel} accessible style={styles.homeStopCard}>
+          <ThemedText>{HOME_STOP_EMPTY_STATE}</ThemedText>
+        </View>
+      )}
     </View>
   );
 }
@@ -323,6 +426,9 @@ export function SettingsScreenContent() {
 
     router.push(href);
   }, [router]);
+  const handleClearHomeStop = React.useCallback(() => {
+    updateSettings({ homeStop: null });
+  }, [updateSettings]);
 
   return (
     <ThemedView style={styles.container}>
@@ -348,12 +454,7 @@ export function SettingsScreenContent() {
               />
             ))}
 
-            <ReadOnlyRow
-              accessibilityLabel='Home stop'
-              helper='Home stop management arrives in Story 4.2. The current selection still appears here.'
-              label='Home stop'
-              value={homeStop ? homeStop.name : 'Not set'}
-            />
+            <HomeStopRow homeStop={homeStop} onClear={handleClearHomeStop} />
 
             <ReadOnlyRow
               accessibilityLabel='Push notifications'
@@ -503,6 +604,71 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: theme.borderWidth.subtle,
     borderBottomColor: theme.colors.card.border,
+  },
+  homeStopCard: {
+    gap: theme.spacing.xs,
+    borderRadius: theme.radius.bar,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
+    backgroundColor: theme.colors.card.bg,
+    padding: theme.spacing.md,
+  },
+  readOnlyRowHeader: {
+    minHeight: theme.layout.minTouchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  homeStopPrimaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  transportBadge: {
+    width: theme.glass.iconBadgeSize,
+    height: theme.glass.iconBadgeSize,
+    borderRadius: theme.glass.iconBadgeRadius,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  homeStopTextGroup: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  homeStopNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  homePinnedBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: `${theme.colors.status.realtime}44`,
+    backgroundColor: `${theme.colors.status.realtime}22`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inlineActionButton: {
+    minHeight: theme.layout.minTouchTarget,
+    minWidth: theme.layout.minTouchTarget,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radius.bar,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(248, 113, 113, 0.14)',
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: 'rgba(248, 113, 113, 0.32)',
+  },
+  inlineActionPressed: {
+    opacity: 0.85,
+  },
+  inlineActionText: {
+    color: theme.colors.status.error,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: '700',
   },
   helperText: {
     lineHeight: 20,
