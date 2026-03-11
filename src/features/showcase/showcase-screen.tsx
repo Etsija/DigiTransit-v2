@@ -54,10 +54,10 @@ export function ShowcaseScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.headerText}>
-              <Text style={styles.eyebrow}>Developer-only</Text>
+              <Text style={styles.eyebrow}>Component gallery</Text>
               <Text style={styles.title}>Showcase</Text>
               <Text style={styles.subtitle}>
-                All Story 1.4 components rendered from local mock data for rapid visual iteration.
+                Preview the shared UI components and live API examples from one screen.
               </Text>
             </View>
 

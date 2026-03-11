@@ -122,6 +122,30 @@ describe('MapScreen', () => {
     });
   });
 
+  it('passes the configured location update interval to the device location hook', () => {
+    useSettingsStore.mockImplementation(
+      (
+        selector: (state: {
+          locationUpdateIntervalSeconds: number;
+          searchRadiusMeters: number;
+          homeStop: { gtfsId: string } | null;
+        }) => unknown
+      ) =>
+        selector({
+          locationUpdateIntervalSeconds: 45,
+          searchRadiusMeters: 250,
+          homeStop: null,
+        })
+    );
+
+    render(<MapScreen />);
+
+    expect(useDeviceLocation).toHaveBeenCalledWith({
+      intervalSeconds: 45,
+      isActive: true,
+    });
+  });
+
   it('updates the rendered coordinates bar when the location changes', async () => {
     const { getByText, rerender } = render(<MapScreen />);
 

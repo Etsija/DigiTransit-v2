@@ -6,6 +6,34 @@ import type { TransportMode } from '@/shared/theme/theme';
 
 const transportModeSchema = z.enum(['bus', 'tram', 'train', 'metro', 'ferry']);
 
+export const settingsNumericBounds = {
+  searchRadiusMeters: {
+    min: 50,
+    max: 5000,
+    defaultValue: 250,
+  },
+  locationUpdateIntervalSeconds: {
+    min: 5,
+    max: 300,
+    defaultValue: 20,
+  },
+  stopsPollingIntervalSeconds: {
+    min: 5,
+    max: 300,
+    defaultValue: 20,
+  },
+  departuresPollingIntervalSeconds: {
+    min: 5,
+    max: 300,
+    defaultValue: 10,
+  },
+  notificationLeadTimeMinutes: {
+    min: 1,
+    max: 120,
+    defaultValue: 10,
+  },
+} as const;
+
 const currentHomeStopSchema = z
   .object({
     gtfsId: z.string().min(1),
@@ -29,13 +57,38 @@ const legacyHomeStopSchema = z
 export const homeStopSchema = z.union([currentHomeStopSchema, legacyHomeStopSchema]);
 
 const settingsFieldSchemas = {
-  searchRadiusMeters: z.number().int().min(50).max(5000).default(250),
-  locationUpdateIntervalSeconds: z.number().int().min(5).max(300).default(20),
-  stopsPollingIntervalSeconds: z.number().int().min(5).max(300).default(20),
-  departuresPollingIntervalSeconds: z.number().int().min(5).max(300).default(10),
+  searchRadiusMeters: z
+    .number()
+    .int()
+    .min(settingsNumericBounds.searchRadiusMeters.min)
+    .max(settingsNumericBounds.searchRadiusMeters.max)
+    .default(settingsNumericBounds.searchRadiusMeters.defaultValue),
+  locationUpdateIntervalSeconds: z
+    .number()
+    .int()
+    .min(settingsNumericBounds.locationUpdateIntervalSeconds.min)
+    .max(settingsNumericBounds.locationUpdateIntervalSeconds.max)
+    .default(settingsNumericBounds.locationUpdateIntervalSeconds.defaultValue),
+  stopsPollingIntervalSeconds: z
+    .number()
+    .int()
+    .min(settingsNumericBounds.stopsPollingIntervalSeconds.min)
+    .max(settingsNumericBounds.stopsPollingIntervalSeconds.max)
+    .default(settingsNumericBounds.stopsPollingIntervalSeconds.defaultValue),
+  departuresPollingIntervalSeconds: z
+    .number()
+    .int()
+    .min(settingsNumericBounds.departuresPollingIntervalSeconds.min)
+    .max(settingsNumericBounds.departuresPollingIntervalSeconds.max)
+    .default(settingsNumericBounds.departuresPollingIntervalSeconds.defaultValue),
   homeStop: homeStopSchema.nullable().default(null),
   pushNotificationsEnabled: z.boolean().default(false),
-  notificationLeadTimeMinutes: z.number().int().min(1).max(120).default(10),
+  notificationLeadTimeMinutes: z
+    .number()
+    .int()
+    .min(settingsNumericBounds.notificationLeadTimeMinutes.min)
+    .max(settingsNumericBounds.notificationLeadTimeMinutes.max)
+    .default(settingsNumericBounds.notificationLeadTimeMinutes.defaultValue),
 } as const;
 
 export const settingsSchema = z.object(settingsFieldSchemas);

@@ -81,8 +81,24 @@ jest.mock('@/core/store/settings.store', () => ({
       selector: (state: {
         locationUpdateIntervalSeconds: number;
         searchRadiusMeters: number;
-      }) => number
-    ) => selector({ locationUpdateIntervalSeconds: 20, searchRadiusMeters: 250 })
+        stopsPollingIntervalSeconds: number;
+        departuresPollingIntervalSeconds: number;
+        homeStop: null;
+        pushNotificationsEnabled: boolean;
+        notificationLeadTimeMinutes: number;
+        updateSettings: jest.Mock;
+      }) => unknown
+    ) =>
+      selector({
+        locationUpdateIntervalSeconds: 20,
+        searchRadiusMeters: 250,
+        stopsPollingIntervalSeconds: 20,
+        departuresPollingIntervalSeconds: 10,
+        homeStop: null,
+        pushNotificationsEnabled: false,
+        notificationLeadTimeMinutes: 10,
+        updateSettings: jest.fn(),
+      })
   ),
 }));
 
@@ -169,6 +185,7 @@ describe('navigation route stubs', () => {
     mockUsePathname.mockReturnValue('/map');
     mockUseRouter.mockReturnValue({
       back: jest.fn(),
+      navigate: jest.fn(),
       replace: jest.fn(),
       push: jest.fn(),
     } as unknown as ReturnType<typeof useRouter>);
@@ -197,6 +214,7 @@ describe('navigation route stubs', () => {
 
     mockUseRouter.mockReturnValue({
       back: jest.fn(),
+      navigate: jest.fn(),
       replace: jest.fn(),
       push,
     } as unknown as ReturnType<typeof useRouter>);
@@ -256,36 +274,36 @@ describe('navigation route stubs', () => {
     expect(getByText('Stops screen route (active)')).toBeTruthy();
   });
 
-  it('renders the settings screen with the current app version', () => {
-    const { getByText } = render(<SettingsScreen />);
+  it('renders the settings screen with diagnostics and a normal showcase action', () => {
+    const { getByRole, getByText } = render(<SettingsScreen />);
 
     expect(getByText('Settings')).toBeTruthy();
-    expect(
-      getByText('Developer tooling stays hidden behind the app version in development builds.')
-    ).toBeTruthy();
+    expect(getByText('Build diagnostics')).toBeTruthy();
     expect(getByText('Version 1.0.0')).toBeTruthy();
+    expect(getByRole('button', { name: 'Open Showcase' })).toBeTruthy();
   });
 
-  it('opens the showcase route after five version taps in development mode', () => {
+  it('opens the showcase route with a single settings action tap', () => {
+    const navigate = jest.fn();
     const push = jest.fn();
 
     mockUseRouter.mockReturnValue({
       back: jest.fn(),
+      navigate,
       replace: jest.fn(),
       push,
     } as unknown as ReturnType<typeof useRouter>);
 
     const { getByRole } = render(<SettingsScreen />);
-    const versionButton = getByRole('button', { name: 'App version 1.0.0' });
 
-    for (let tap = 0; tap < 5; tap += 1) {
-      fireEvent.press(versionButton);
-    }
+    fireEvent.press(getByRole('button', { name: 'Open Showcase' }));
 
-    expect(push).toHaveBeenCalledWith(buildShowcaseHref());
+    expect(push).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(buildShowcaseHref());
   });
 
-  it('does nothing after five version taps in production mode', () => {
+  it('keeps the showcase action available in production mode', () => {
+    const navigate = jest.fn();
     const push = jest.fn();
 
     Object.defineProperty(devGlobal, '__DEV__', {
@@ -296,16 +314,21 @@ describe('navigation route stubs', () => {
 
     mockUseRouter.mockReturnValue({
       back: jest.fn(),
+      navigate,
       replace: jest.fn(),
       push,
     } as unknown as ReturnType<typeof useRouter>);
 
-    const { getByLabelText, queryByRole } = render(<SettingsScreen />);
+    const { getByLabelText, getByRole, queryByRole } = render(<SettingsScreen />);
 
+    expect(getByRole('button', { name: 'Open Showcase' })).toBeTruthy();
     expect(queryByRole('button', { name: 'App version 1.0.0' })).toBeNull();
     expect(getByLabelText('App version 1.0.0')).toBeTruthy();
 
+    fireEvent.press(getByRole('button', { name: 'Open Showcase' }));
+
     expect(push).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith(buildShowcaseHref());
   });
 
   it('renders the web tab shell with the three primary tabs only', () => {
@@ -359,15 +382,16 @@ describe('navigation route stubs', () => {
     expect(buildSettingsHref()).toBe('/settings');
   });
 
-  it('redirects the showcase route to settings outside development mode', () => {
+  it('renders the showcase route outside development mode without redirecting', () => {
     Object.defineProperty(devGlobal, '__DEV__', {
       configurable: true,
       value: false,
       writable: true,
     });
 
-    render(<ShowcaseRoute />);
+    const { queryByText } = renderWithQueryClient(<ShowcaseRoute />);
 
-    expect(mockRedirect).toHaveBeenCalledWith({ href: '/settings' }, undefined);
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(queryByText('redirect:/settings')).toBeNull();
   });
 });
