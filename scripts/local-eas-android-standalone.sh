@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env"
+OUTPUT_DIR="${ANDROID_STANDALONE_OUTPUT_DIR:-${ROOT_DIR}/artifacts/android}"
+OUTPUT_PATH="${ANDROID_STANDALONE_OUTPUT_PATH:-${OUTPUT_DIR}/digitransit-preview.apk}"
 
 if [[ -f "${ENV_FILE}" ]]; then
   set -a
@@ -64,6 +66,8 @@ export GRADLE_OPTS="$(append_opt "${GRADLE_OPTS}" "-Dorg.gradle.parallel=false -
 
 cd "${ROOT_DIR}"
 
+mkdir -p "${OUTPUT_DIR}"
+
 echo "android:standalone local tuning"
 echo "  total memory: ${TOTAL_MEMORY_MB} MB"
 echo "  cpu count: ${CPU_COUNT}"
@@ -71,5 +75,6 @@ echo "  node heap: ${ANDROID_STANDALONE_NODE_HEAP_MB:-$DEFAULT_NODE_HEAP_MB} MB"
 echo "  gradle heap: ${ANDROID_STANDALONE_GRADLE_HEAP_MB:-$DEFAULT_GRADLE_HEAP_MB} MB"
 echo "  gradle metaspace: ${ANDROID_STANDALONE_GRADLE_METASPACE_MB:-$DEFAULT_GRADLE_METASPACE_MB} MB"
 echo "  gradle workers: ${ANDROID_STANDALONE_GRADLE_WORKERS:-$DEFAULT_GRADLE_WORKERS}"
+echo "  output apk: ${OUTPUT_PATH}"
 
-exec eas build --platform android --profile preview --local
+exec eas build --platform android --profile preview --local --output "${OUTPUT_PATH}"

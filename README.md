@@ -30,6 +30,9 @@ Mapbox-backed web map.
    For standalone EAS builds, set the same public variables in the EAS environment used by the
    build profile. The `preview` profile expects the EAS environment named `preview`.
 
+   Local standalone APKs are written to `artifacts/android/digitransit-preview.apk` by default.
+   You can override the path with `ANDROID_STANDALONE_OUTPUT_PATH=/your/path/app.apk`.
+
    After adding the Google Maps key, rebuild the Android app so the native
    manifest metadata is regenerated. After adding the iOS Google Maps key,
    rebuild the iOS app so the config plugin can regenerate native settings.
