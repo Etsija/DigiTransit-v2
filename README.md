@@ -27,6 +27,9 @@ Mapbox-backed web map.
    `EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN`.
    You can optionally override the GraphQL endpoint with `EXPO_PUBLIC_DIGITRANSIT_API_URL`.
 
+   For standalone EAS builds, set the same public variables in the EAS environment used by the
+   build profile. The `preview` profile expects the EAS environment named `preview`.
+
    After adding the Google Maps key, rebuild the Android app so the native
    manifest metadata is regenerated. After adding the iOS Google Maps key,
    rebuild the iOS app so the config plugin can regenerate native settings.
