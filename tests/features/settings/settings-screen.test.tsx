@@ -1,6 +1,7 @@
 /// <reference types="jest" />
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { useStore } from 'zustand';
@@ -29,6 +30,13 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    navigate: jest.fn(),
+  }),
+}));
+
 jest.mock('@/core/config/env', () => ({
   DIGITRANSIT_API_KEY: 'abcd1234secret9876',
   DIGITRANSIT_API_URL: 'https://example.invalid/routing/v1',
@@ -36,6 +44,18 @@ jest.mock('@/core/config/env', () => ({
 
 jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(),
+}));
+
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: jest.fn(() => true),
+}));
+
+jest.mock('@/core/platform/notifications', () => ({
+  notificationPlatformAdapter: {
+    getPermissionState: jest.fn(),
+    requestPermission: jest.fn(),
+    prepareRuntime: jest.fn(),
+  },
 }));
 
 jest.mock('react-native-safe-area-context', () => {
@@ -68,13 +88,31 @@ describe('SettingsScreenContent', () => {
   const { useSettingsStore } = jest.requireMock('@/core/store/settings.store') as {
     useSettingsStore: jest.Mock;
   };
+  const { notificationPlatformAdapter } = jest.requireMock('@/core/platform/notifications') as {
+    notificationPlatformAdapter: {
+      getPermissionState: jest.Mock;
+      requestPermission: jest.Mock;
+      prepareRuntime: jest.Mock;
+    };
+  };
 
   function RuntimeConsumer() {
     const radius = useSettingsStore((state: MockSettingsState) => state.searchRadiusMeters);
     return <Text>{`Radius consumer: ${radius}`}</Text>;
   }
 
+  async function renderSettingsScreen(node: React.ReactElement = <SettingsScreenContent />) {
+    const rendered = render(node);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    return rendered;
+  }
+
   beforeEach(() => {
+    (useIsFocused as jest.Mock).mockReturnValue(true);
     settingsStore = createStore<MockSettingsState>()((set) => ({
       searchRadiusMeters: 250,
       locationUpdateIntervalSeconds: 20,
@@ -94,14 +132,25 @@ describe('SettingsScreenContent', () => {
     useSettingsStore.mockImplementation((selector: (state: MockSettingsState) => unknown) =>
       useStore(settingsStore, selector)
     );
+    notificationPlatformAdapter.getPermissionState.mockResolvedValue({
+      supported: true,
+      granted: false,
+      canPrompt: true,
+    });
+    notificationPlatformAdapter.requestPermission.mockResolvedValue({
+      supported: true,
+      granted: true,
+      canPrompt: true,
+    });
+    notificationPlatformAdapter.prepareRuntime.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders all seven configurable rows and keeps diagnostics plus showcase in the utility section', () => {
-    render(<SettingsScreenContent />);
+  it('renders all seven configurable rows and keeps diagnostics plus showcase in the utility section', async () => {
+    await renderSettingsScreen();
 
     expect(screen.getByText('Settings')).toBeTruthy();
     expect(screen.getByLabelText('Search radius')).toBeTruthy();
@@ -121,7 +170,162 @@ describe('SettingsScreenContent', () => {
     expect(screen.getByLabelText(`Home stop, ${homeStopEmptyState}`)).toBeTruthy();
   });
 
-  it('shows the pinned home stop with transport type, pinned cue, and a clear action', () => {
+  it('requests permission before enabling notifications and persists enabled state only when granted', async () => {
+    await renderSettingsScreen();
+
+    fireEvent(screen.getByLabelText('Push notifications'), 'valueChange', true);
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.requestPermission).toHaveBeenCalled();
+    });
+    expect(notificationPlatformAdapter.prepareRuntime).toHaveBeenCalled();
+    expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+      pushNotificationsEnabled: true,
+    });
+  });
+
+  it('keeps notifications disabled when the OS permission request is denied', async () => {
+    notificationPlatformAdapter.requestPermission.mockResolvedValue({
+      supported: true,
+      granted: false,
+      canPrompt: false,
+    });
+
+    await renderSettingsScreen();
+
+    fireEvent(screen.getByLabelText('Push notifications'), 'valueChange', true);
+
+    await waitFor(() => {
+      expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+        pushNotificationsEnabled: false,
+      });
+    });
+  });
+
+  it('disables notifications immediately without requesting permission again', async () => {
+    notificationPlatformAdapter.getPermissionState.mockResolvedValue({
+      supported: true,
+      granted: true,
+      canPrompt: true,
+    });
+    settingsStore.setState({
+      pushNotificationsEnabled: true,
+    });
+
+    await renderSettingsScreen();
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.getPermissionState).toHaveBeenCalled();
+    });
+
+    fireEvent(screen.getByLabelText('Push notifications'), 'valueChange', false);
+
+    expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+      pushNotificationsEnabled: false,
+    });
+    expect(notificationPlatformAdapter.requestPermission).not.toHaveBeenCalled();
+    expect(notificationPlatformAdapter.prepareRuntime).not.toHaveBeenCalled();
+  });
+
+  it('prepares the notification runtime when enabling with an already-granted permission state', async () => {
+    notificationPlatformAdapter.getPermissionState.mockResolvedValue({
+      supported: true,
+      granted: true,
+      canPrompt: true,
+    });
+
+    await renderSettingsScreen();
+
+    fireEvent(screen.getByLabelText('Push notifications'), 'valueChange', true);
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.prepareRuntime).toHaveBeenCalled();
+    });
+    expect(notificationPlatformAdapter.requestPermission).not.toHaveBeenCalled();
+    expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+      pushNotificationsEnabled: true,
+    });
+  });
+
+  it('dims and disables the lead-time control while notifications are off', async () => {
+    await renderSettingsScreen();
+
+    const leadTimeButton = screen.getByRole('button', { name: 'Notification lead time' });
+    const resolvedStyle =
+      typeof leadTimeButton.props.style === 'function'
+        ? leadTimeButton.props.style({ pressed: false })
+        : leadTimeButton.props.style;
+    const style = StyleSheet.flatten(resolvedStyle);
+
+    expect(leadTimeButton.props.accessibilityState.disabled).toBe(true);
+    expect(style.opacity).toBe(0.5);
+  });
+
+  it('persists lead-time updates when notifications are enabled', async () => {
+    notificationPlatformAdapter.getPermissionState.mockResolvedValue({
+      supported: true,
+      granted: true,
+      canPrompt: true,
+    });
+    settingsStore.setState({
+      pushNotificationsEnabled: true,
+      notificationLeadTimeMinutes: 7,
+    });
+
+    await renderSettingsScreen();
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.getPermissionState).toHaveBeenCalled();
+    });
+
+    fireEvent.press(screen.getByRole('button', { name: 'Notification lead time' }));
+    fireEvent.press(screen.getByRole('button', { name: '15 minutes' }));
+
+    expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+      notificationLeadTimeMinutes: 15,
+    });
+    expect(screen.getByRole('button', { name: 'Notification lead time' })).toBeTruthy();
+  });
+
+  it('re-syncs the stored toggle off when permission has been revoked outside the app', async () => {
+    notificationPlatformAdapter.getPermissionState.mockResolvedValue({
+      supported: true,
+      granted: false,
+      canPrompt: false,
+    });
+    settingsStore.setState({
+      pushNotificationsEnabled: true,
+    });
+
+    await renderSettingsScreen();
+
+    await waitFor(() => {
+      expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+        pushNotificationsEnabled: false,
+      });
+    });
+  });
+
+  it('fails closed when notification permission lookup throws', async () => {
+    notificationPlatformAdapter.getPermissionState.mockRejectedValue(new Error('boom'));
+    settingsStore.setState({
+      pushNotificationsEnabled: true,
+    });
+
+    await renderSettingsScreen();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Push notifications are not available on web in this MVP.')
+      ).toBeTruthy();
+    });
+
+    expect(settingsStore.getState().updateSettings).toHaveBeenCalledWith({
+      pushNotificationsEnabled: false,
+    });
+  });
+
+  it('shows the pinned home stop with transport type, pinned cue, and a clear action', async () => {
     settingsStore.setState({
       homeStop: {
         gtfsId: 'HSL:1002',
@@ -130,7 +334,7 @@ describe('SettingsScreenContent', () => {
       },
     });
 
-    render(<SettingsScreenContent />);
+    await renderSettingsScreen();
 
     expect(screen.getByLabelText('Home stop')).toBeTruthy();
     expect(screen.getByText('Central station')).toBeTruthy();
@@ -144,7 +348,7 @@ describe('SettingsScreenContent', () => {
     expect(screen.getByRole('button', { name: 'Clear home stop' })).toBeTruthy();
   });
 
-  it('keeps the clear action at the minimum touch target size', () => {
+  it('keeps the clear action at the minimum touch target size', async () => {
     settingsStore.setState({
       homeStop: {
         gtfsId: 'HSL:1002',
@@ -153,7 +357,7 @@ describe('SettingsScreenContent', () => {
       },
     });
 
-    render(<SettingsScreenContent />);
+    await renderSettingsScreen();
 
     const clearButton = screen.getByRole('button', { name: 'Clear home stop' });
     const resolvedStyle =
@@ -166,7 +370,7 @@ describe('SettingsScreenContent', () => {
     expect(style.minWidth).toBe(theme.layout.minTouchTarget);
   });
 
-  it('clears the pinned home stop and falls back to the exact empty-state guidance', () => {
+  it('clears the pinned home stop and falls back to the exact empty-state guidance', async () => {
     settingsStore.setState({
       homeStop: {
         gtfsId: 'HSL:1002',
@@ -175,7 +379,7 @@ describe('SettingsScreenContent', () => {
       },
     });
 
-    render(<SettingsScreenContent />);
+    await renderSettingsScreen();
 
     fireEvent.press(screen.getByRole('button', { name: 'Clear home stop' }));
 
@@ -187,8 +391,8 @@ describe('SettingsScreenContent', () => {
     expect(screen.queryByRole('button', { name: 'Clear home stop' })).toBeNull();
   });
 
-  it('initializes editable fields from the store and keeps save disabled until something changes', () => {
-    render(<SettingsScreenContent />);
+  it('initializes editable fields from the store and keeps save disabled until something changes', async () => {
+    await renderSettingsScreen();
 
     expect(screen.getByLabelText('Search radius').props.value).toBe('250');
     expect(screen.getByLabelText('Location update interval').props.value).toBe('20');
@@ -206,8 +410,8 @@ describe('SettingsScreenContent', () => {
     ).toBe(false);
   });
 
-  it('shows inline validation for invalid values before save', () => {
-    render(<SettingsScreenContent />);
+  it('shows inline validation for invalid values before save', async () => {
+    await renderSettingsScreen();
 
     fireEvent.changeText(screen.getByLabelText('Search radius'), '20');
 
@@ -218,16 +422,16 @@ describe('SettingsScreenContent', () => {
     ).toBe(true);
   });
 
-  it('shows an unsaved-changes status after a valid edit', () => {
-    render(<SettingsScreenContent />);
+  it('shows an unsaved-changes status after a valid edit', async () => {
+    await renderSettingsScreen();
 
     fireEvent.changeText(screen.getByLabelText('Search radius'), '400');
 
     expect(screen.getByText('Unsaved changes')).toBeTruthy();
   });
 
-  it('saves sanitized values through updateSettings and store consumers react immediately', () => {
-    render(
+  it('saves sanitized values through updateSettings and store consumers react immediately', async () => {
+    await renderSettingsScreen(
       <>
         <SettingsScreenContent />
         <RuntimeConsumer />

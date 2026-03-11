@@ -64,10 +64,10 @@ development_status:
   3-3-departures-auto-refresh-and-loading-states: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-settings-screen-and-configurable-polling-radius-values: done
   4-2-home-stop-display-and-clearing-in-settings: done
-  4-3-notification-preferences-in-settings: backlog
+  4-3-notification-preferences-in-settings: done
   epic-4-retrospective: optional
 
   epic-5: backlog

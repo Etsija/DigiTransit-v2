@@ -1,7 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useSettingsStore } from '@/core/store/settings.store';
 import { theme } from '@/shared/theme/theme';
+
+const notificationLeadTimeOptions = [5, 10, 15];
 
 type IdleProps = {
   mode: 'idle';
@@ -9,6 +12,7 @@ type IdleProps = {
   departureTime: string;
   onNotify: () => void;
   onDismiss: () => void;
+  onLeadTimeChange?: (minutes: number) => void;
   onCancel?: never;
 };
 
@@ -18,6 +22,7 @@ type CancelProps = {
   departureTime: string;
   onCancel: () => void;
   onDismiss: () => void;
+  onLeadTimeChange?: never;
   onNotify?: never;
 };
 
@@ -25,6 +30,9 @@ export type DepartureNotificationDialogProps = IdleProps | CancelProps;
 
 export function DepartureNotificationDialog(props: DepartureNotificationDialogProps) {
   const { mode, routeShortName, departureTime, onDismiss } = props;
+  const notificationLeadTimeMinutes = useSettingsStore(
+    (state) => state.notificationLeadTimeMinutes
+  );
 
   return (
     <View style={styles.container}>
@@ -32,6 +40,40 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
         <Text style={styles.routeText}>{routeShortName}</Text>
         <Text style={styles.timeText}>{departureTime}</Text>
       </View>
+
+      {mode === 'idle' ? (
+        <View style={styles.preferenceSection}>
+          <Text style={styles.preferenceText}>
+            {`Default alert: ${notificationLeadTimeMinutes} min before departure`}
+          </Text>
+
+          <View style={styles.optionRow}>
+            {notificationLeadTimeOptions.map((minutes) => {
+              const selected = minutes === notificationLeadTimeMinutes;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`${minutes} minutes`}
+                  accessibilityRole='radio'
+                  accessibilityState={{ selected }}
+                  key={minutes}
+                  onPress={() => props.onLeadTimeChange?.(minutes)}
+                  style={[styles.optionButton, selected ? styles.optionButtonSelected : null]}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      selected ? styles.optionButtonTextSelected : null,
+                    ]}
+                  >
+                    {`${minutes} min`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.actions}>
         {mode === 'idle' ? (
@@ -82,6 +124,42 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: theme.spacing.sm,
+  },
+  preferenceText: {
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.sm.fontSize,
+  },
+  preferenceSection: {
+    gap: theme.spacing.sm,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  optionButton: {
+    minHeight: theme.layout.minTouchTarget,
+    minWidth: theme.layout.minTouchTarget,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.bar,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionButtonSelected: {
+    borderColor: theme.colors.status.realtime,
+    backgroundColor: `${theme.colors.status.realtime}22`,
+  },
+  optionButtonText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: '500',
+  },
+  optionButtonTextSelected: {
+    color: theme.colors.status.realtime,
+    fontWeight: '700',
   },
   button: {
     backgroundColor: theme.colors.status.realtime,
