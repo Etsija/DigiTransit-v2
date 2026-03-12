@@ -13,6 +13,7 @@ export type DepartureCardProps = {
   accessibilityLabel?: string;
   notificationScheduled?: boolean;
   onPress?: () => void;
+  onLongPress?: () => void;
 };
 
 function formatTimeToDeparture(departureEpochSeconds: number, nowMs: number): string {
@@ -38,6 +39,7 @@ export function DepartureCard({
   accessibilityLabel,
   notificationScheduled = false,
   onPress,
+  onLongPress,
 }: DepartureCardProps) {
   const isRealtime = status === 'realtime';
   const borderColor = isRealtime ? theme.colors.status.realtime : theme.colors.status.estimated;
@@ -96,12 +98,13 @@ export function DepartureCard({
     </View>
   );
 
-  if (onPress) {
+  if (onPress || onLongPress) {
     return (
       <Pressable
         accessibilityRole='button'
         accessibilityLabel={resolvedAccessibilityLabel}
         onPress={onPress}
+        onLongPress={onLongPress}
         style={({ pressed }) => pressed && styles.pressed}
       >
         {content}

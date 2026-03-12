@@ -2,7 +2,10 @@
 
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
+import { Platform } from 'react-native';
 
+import { departureReminderStore } from '@/core/store/departure-reminders.store';
+import { getSettingsStore } from '@/core/store/settings.store';
 import { DeparturesScreen } from '@/features/departures/departures-screen';
 
 jest.mock('react-native-safe-area-context', () => {
@@ -12,6 +15,12 @@ jest.mock('react-native-safe-area-context', () => {
   SafeAreaView.displayName = 'SafeAreaView';
   return {
     SafeAreaView,
+    useSafeAreaInsets: () => ({
+      top: 0,
+      right: 0,
+      bottom: 12,
+      left: 0,
+    }),
   };
 });
 
@@ -58,6 +67,17 @@ jest.mock('@/features/departures/hooks/use-stop-departures', () => ({
   useStopDepartures: jest.fn(),
 }));
 
+jest.mock('@/core/platform/notifications', () => ({
+  notificationPlatformAdapter: {
+    getPermissionState: jest.fn(),
+    prepareRuntime: jest.fn(),
+    requestPermission: jest.fn(),
+    sendImmediateNotification: jest.fn(),
+    scheduleNotification: jest.fn(),
+    cancelScheduledNotification: jest.fn(),
+  },
+}));
+
 describe('DeparturesScreen', () => {
   const onBack = jest.fn();
   const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
@@ -66,6 +86,13 @@ describe('DeparturesScreen', () => {
     '@/features/departures/hooks/use-stop-departures'
   ) as {
     useStopDepartures: jest.Mock;
+  };
+  const { notificationPlatformAdapter } = jest.requireMock('@/core/platform/notifications') as {
+    notificationPlatformAdapter: {
+      getPermissionState: jest.Mock;
+      prepareRuntime: jest.Mock;
+      scheduleNotification: jest.Mock;
+    };
   };
   const departureData = {
     header: {
@@ -123,16 +150,245 @@ describe('DeparturesScreen', () => {
   }
 
   beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2023-11-14T22:10:00.000Z'));
     useStopDepartures.mockReturnValue(createDepartureQueryState());
+    notificationPlatformAdapter.getPermissionState.mockResolvedValue({
+      supported: true,
+      granted: true,
+      canPrompt: false,
+    });
+    notificationPlatformAdapter.prepareRuntime.mockResolvedValue(undefined);
+    notificationPlatformAdapter.scheduleNotification.mockResolvedValue('scheduled-id');
+    departureReminderStore.getState().reset();
+    getSettingsStore().getState().updateSettings({ notificationLeadTimeMinutes: 10 });
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
   });
 
   afterAll(() => {
     infoSpy.mockRestore();
     warnSpy.mockRestore();
+  });
+
+  it('opens the reminder dialog on native long press and schedules a badge-marked reminder on confirm', async () => {
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+
+    expect(screen.getByText('Notify Me')).toBeTruthy();
+    expect(screen.getByText('Default alert: 10 min before departure')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('radio', { name: '5 minutes' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Notify Me' }));
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.scheduleNotification).toHaveBeenCalledWith({
+        title: 'Departure reminder',
+        body: '4 to Munkkiniemi departs in 5 min from Central station',
+        fireAt: new Date((1_700_000_000 + 120 - 5 * 60) * 1000),
+      });
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+      expect(screen.queryByText('Notify Me')).toBeNull();
+    });
+  });
+
+  it('falls back to the largest still-valid lead time when the default would schedule in the past', async () => {
+    jest.setSystemTime(new Date('2023-11-14T22:20:00.000Z'));
+    getSettingsStore().getState().updateSettings({ notificationLeadTimeMinutes: 15 });
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({
+        data: {
+          ...departureData,
+          departures: [
+            {
+              ...departureData.departures[1],
+              scheduledDeparture: 20 * 60,
+              realtimeDeparture: 20 * 60,
+              displayDepartureEpochSeconds: 1_700_000_000 + 20 * 60,
+              displayTime: '22:33',
+              accessibilityLabel: '22:33, route 7B to Pasila, Scheduled',
+            },
+          ],
+        },
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:33, route 7B to Pasila, Scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:33, route 7B to Pasila, Scheduled'), 'longPress');
+
+    expect(
+      screen.getByRole('radio', { name: '15 minutes' }).props.accessibilityState.disabled
+    ).toBe(true);
+    expect(
+      screen.getByRole('radio', { name: '15 minutes' }).props.accessibilityState.disabled
+    ).toBe(true);
+    expect(
+      screen.getByRole('radio', { name: '10 minutes' }).props.accessibilityState.selected
+    ).toBe(true);
+    expect(screen.getByRole('radio', { name: '5 minutes' }).props.accessibilityState.selected).toBe(
+      false
+    );
+  });
+
+  it('keeps the stored default lead time selected when it is still schedulable', async () => {
+    jest.setSystemTime(new Date('2023-11-14T22:00:00.000Z'));
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled'), 'longPress');
+
+    expect(
+      screen.getByRole('radio', { name: '10 minutes' }).props.accessibilityState.selected
+    ).toBe(true);
+    expect(screen.getByRole('radio', { name: '5 minutes' }).props.accessibilityState.selected).toBe(
+      false
+    );
+  });
+
+  it('keeps reminder state unchanged when the dialog is dismissed', async () => {
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+    fireEvent.press(screen.getByText('Dismiss'));
+
+    expect(notificationPlatformAdapter.scheduleNotification).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Notification scheduled')).toBeNull();
+    expect(screen.queryByText('Notify Me')).toBeNull();
+  });
+
+  it('prevents duplicate scheduling while a reminder request is already in flight', async () => {
+    let resolveSchedule: ((value: string) => void) | undefined;
+    notificationPlatformAdapter.scheduleNotification.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveSchedule = resolve;
+        })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled'), 'longPress');
+    fireEvent.press(screen.getByRole('radio', { name: '5 minutes' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Notify Me' }));
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.scheduleNotification).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: 'Scheduling...' })).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByRole('button', { name: 'Scheduling...' }));
+
+    expect(notificationPlatformAdapter.scheduleNotification).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveSchedule?.('scheduled-id');
+      await Promise.resolve();
+    });
+  });
+
+  it('prunes expired reminders during the active session so stale badges disappear', async () => {
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::180::7B::Pasila', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 5_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(31_000);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Notification scheduled')).toBeNull();
+    });
+  });
+
+  it('leaves departures rows non-interactive for reminder booking on web', async () => {
+    const originalPlatform = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('22:15')).toBeTruthy();
+    });
+
+    expect(
+      screen.queryAllByRole('button', { name: '22:15, route 4 to Munkkiniemi, Live GPS' })
+    ).toHaveLength(0);
+
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform });
   });
 
   it('renders the stop header and departure cards on a static backdrop without mounting a live map surface', async () => {

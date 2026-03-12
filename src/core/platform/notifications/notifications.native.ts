@@ -4,6 +4,7 @@ import type {
   ImmediateNotification,
   NotificationPermissionState,
   NotificationPlatformAdapter,
+  ScheduledNotification,
 } from './index';
 
 const DEFAULT_ANDROID_CHANNEL_ID = 'default-departure-alerts';
@@ -98,6 +99,21 @@ async function scheduleImmediateNotification(notification: ImmediateNotification
   });
 }
 
+async function scheduleAbsoluteNotification(notification: ScheduledNotification) {
+  const notificationsModule = getNotificationsModule();
+
+  return notificationsModule.scheduleNotificationAsync({
+    content: {
+      title: notification.title,
+      body: notification.body,
+    },
+    trigger: {
+      type: notificationsModule.SchedulableTriggerInputTypes.DATE,
+      date: notification.fireAt,
+    },
+  });
+}
+
 export const notificationPlatformAdapter: NotificationPlatformAdapter = {
   async getPermissionState() {
     const notificationsModule = getNotificationsModule();
@@ -132,5 +148,16 @@ export const notificationPlatformAdapter: NotificationPlatformAdapter = {
     await ensureAndroidNotificationChannel();
     ensureForegroundNotificationPresentation();
     await scheduleImmediateNotification(notification);
+  },
+
+  async scheduleNotification(notification) {
+    await ensureAndroidNotificationChannel();
+    ensureForegroundNotificationPresentation();
+    return scheduleAbsoluteNotification(notification);
+  },
+
+  async cancelScheduledNotification(identifier) {
+    const notificationsModule = getNotificationsModule();
+    await notificationsModule.cancelScheduledNotificationAsync(identifier);
   },
 };

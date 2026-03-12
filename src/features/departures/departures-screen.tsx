@@ -1,13 +1,34 @@
 import { Image } from 'expo-image';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AppError } from '@/core/errors/app-error';
+import { notificationPlatformAdapter } from '@/core/platform/notifications';
+import { useDepartureReminderStore } from '@/core/store/departure-reminders.store';
 import { DeparturesSkeleton } from '@/features/departures/components/departures-skeleton';
-import { useStopDepartures } from '@/features/departures/hooks/use-stop-departures';
+import {
+  useStopDepartures,
+  type StopDeparture,
+} from '@/features/departures/hooks/use-stop-departures';
+import {
+  buildDepartureReminderKey,
+  buildDepartureReminderNotificationBody,
+  departureReminderLeadTimeOptions,
+  isDepartureReminderLeadTimeAvailable,
+  resolveDepartureReminderFireDate,
+} from '@/features/departures/utils/departure-reminders';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { DepartureCard } from '@/shared/components/departure-card';
+import { DepartureNotificationDialog } from '@/shared/components/departure-notification-dialog';
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorBanner } from '@/shared/components/error-banner';
 import { StopHeaderCard } from '@/shared/components/stop-header-card';
@@ -44,10 +65,19 @@ function resolveErrorMessage(error: AppError | Error | null | undefined): string
 export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScreenProps) {
   const renderStartedAtRef = useRef(getNow());
   const hasReportedReadyRef = useRef(false);
+  const schedulingReminderKeyRef = useRef<string | null>(null);
+  const insets = useSafeAreaInsets();
   const [showPatterns, setShowPatterns] = useState(false);
+  const [selectedDeparture, setSelectedDeparture] = useState<StopDeparture | null>(null);
+  const [isSchedulingReminder, setIsSchedulingReminder] = useState(false);
   const departuresQuery = useStopDepartures({ stopId });
+  const remindersByKey = useDepartureReminderStore((state) => state.remindersByKey);
+  const hasHydratedReminders = useDepartureReminderStore((state) => state.hasHydrated);
   const header = departuresQuery.data?.header ?? null;
   const departures = departuresQuery.data?.departures ?? [];
+  const setReminder = useDepartureReminderStore((state) => state.setReminder);
+  const pruneExpiredReminders = useDepartureReminderStore((state) => state.pruneExpiredReminders);
+  const reminderBookingSupported = Platform.OS !== 'web';
   const hasCachedDepartures = Boolean(header) && departures.length > 0;
   const showInitialLoader = !header && departuresQuery.isPending;
   const showErrorBanner = departuresQuery.isError;
@@ -79,7 +109,109 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
 
   React.useEffect(() => {
     setShowPatterns(false);
+    setSelectedDeparture(null);
+    schedulingReminderKeyRef.current = null;
+    setIsSchedulingReminder(false);
   }, [stopId]);
+
+  React.useEffect(() => {
+    if (hasHydratedReminders) {
+      pruneExpiredReminders();
+    }
+  }, [hasHydratedReminders, pruneExpiredReminders]);
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      pruneExpiredReminders();
+    }, 30_000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [pruneExpiredReminders]);
+
+  const leadTimeOptions =
+    selectedDeparture === null
+      ? []
+      : departureReminderLeadTimeOptions.map((minutes) => ({
+          minutes,
+          disabled: !isDepartureReminderLeadTimeAvailable({
+            serviceDay: selectedDeparture.serviceDay,
+            scheduledDeparture: selectedDeparture.scheduledDeparture,
+            leadTimeMinutes: minutes,
+          }),
+        }));
+  const dialogBottomInset =
+    insets.bottom + theme.layout.tabBarHeight + theme.spacing.sm + theme.spacing.xs;
+
+  async function handleScheduleReminder(leadTimeMinutes: number) {
+    if (!selectedDeparture || !header) {
+      return;
+    }
+
+    const reminderKey = buildDepartureReminderKey({
+      stopId,
+      serviceDay: selectedDeparture.serviceDay,
+      scheduledDeparture: selectedDeparture.scheduledDeparture,
+      routeShortName: selectedDeparture.routeShortName,
+      headsign: selectedDeparture.headsign,
+    });
+
+    if (remindersByKey[reminderKey] || schedulingReminderKeyRef.current === reminderKey) {
+      setSelectedDeparture(null);
+      return;
+    }
+
+    const fireAt = resolveDepartureReminderFireDate({
+      serviceDay: selectedDeparture.serviceDay,
+      scheduledDeparture: selectedDeparture.scheduledDeparture,
+      leadTimeMinutes,
+    });
+
+    if (!fireAt) {
+      setSelectedDeparture(null);
+      return;
+    }
+
+    schedulingReminderKeyRef.current = reminderKey;
+    setIsSchedulingReminder(true);
+
+    try {
+      const permissionState = await notificationPlatformAdapter.getPermissionState();
+
+      if (!permissionState.supported || !permissionState.granted) {
+        setSelectedDeparture(null);
+        return;
+      }
+
+      await notificationPlatformAdapter.prepareRuntime();
+      const notificationId = await notificationPlatformAdapter.scheduleNotification({
+        title: 'Departure reminder',
+        body: buildDepartureReminderNotificationBody({
+          routeShortName: selectedDeparture.routeShortName,
+          headsign: selectedDeparture.headsign,
+          leadTimeMinutes,
+          stopName: header.name,
+        }),
+        fireAt,
+      });
+
+      if (notificationId) {
+        setReminder(reminderKey, {
+          notificationId,
+          fireAtMs: fireAt.getTime(),
+        });
+      }
+    } catch {
+      // Notification failures must not destabilize the departures route.
+    } finally {
+      if (schedulingReminderKeyRef.current === reminderKey) {
+        schedulingReminderKeyRef.current = null;
+      }
+      setIsSchedulingReminder(false);
+      setSelectedDeparture(null);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -206,6 +338,20 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
                       departureEpochSeconds={departure.displayDepartureEpochSeconds}
                       status={departure.status}
                       accessibilityLabel={departure.accessibilityLabel}
+                      notificationScheduled={Boolean(
+                        remindersByKey[
+                          buildDepartureReminderKey({
+                            stopId,
+                            serviceDay: departure.serviceDay,
+                            scheduledDeparture: departure.scheduledDeparture,
+                            routeShortName: departure.routeShortName,
+                            headsign: departure.headsign,
+                          })
+                        ]
+                      )}
+                      onLongPress={
+                        reminderBookingSupported ? () => setSelectedDeparture(departure) : undefined
+                      }
                     />
                   ))}
                 </View>
@@ -226,6 +372,28 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
             ) : null}
           </ScrollView>
         </View>
+
+        {selectedDeparture && header && reminderBookingSupported ? (
+          <View style={styles.dialogOverlay} testID='departure-reminder-dialog-overlay'>
+            <Pressable
+              accessibilityRole='button'
+              accessibilityLabel='Dismiss'
+              onPress={() => setSelectedDeparture(null)}
+              style={styles.dialogBackdrop}
+            />
+            <View style={[styles.dialogSheet, { paddingBottom: dialogBottomInset }]}>
+              <DepartureNotificationDialog
+                mode='idle'
+                routeShortName={selectedDeparture.routeShortName}
+                departureTime={selectedDeparture.displayTime}
+                isSubmitting={isSchedulingReminder}
+                leadTimeOptions={leadTimeOptions}
+                onDismiss={() => setSelectedDeparture(null)}
+                onNotify={handleScheduleReminder}
+              />
+            </View>
+          </View>
+        ) : null}
       </SafeAreaView>
     </View>
   );
@@ -372,5 +540,17 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sm.fontSize,
     fontWeight: theme.typography.sm.fontWeight,
     lineHeight: 18,
+  },
+  dialogOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  dialogBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+  },
+  dialogSheet: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
   },
 });
