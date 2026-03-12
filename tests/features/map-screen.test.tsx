@@ -52,6 +52,10 @@ jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(),
 }));
 
+jest.mock('@/features/notifications/hooks/use-home-stop-launch-notification', () => ({
+  useHomeStopLaunchNotification: jest.fn(),
+}));
+
 describe('MapScreen', () => {
   const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
   const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
@@ -72,6 +76,11 @@ describe('MapScreen', () => {
   };
   const { PlatformMapView } = jest.requireMock('@/core/platform/maps/map-view') as {
     PlatformMapView: jest.Mock;
+  };
+  const { useHomeStopLaunchNotification } = jest.requireMock(
+    '@/features/notifications/hooks/use-home-stop-launch-notification'
+  ) as {
+    useHomeStopLaunchNotification: jest.Mock;
   };
 
   beforeEach(() => {
@@ -432,6 +441,15 @@ describe('MapScreen', () => {
         enabled: false,
       });
     });
+  });
+
+  it('mounts the launch notification hook without changing the map-screen error surface', () => {
+    const { queryByText } = render(<MapScreen isActive={false} />);
+
+    expect(useHomeStopLaunchNotification).toHaveBeenCalledWith({
+      isActive: false,
+    });
+    expect(queryByText('DigiTransit API unavailable')).toBeNull();
   });
 
   it('passes marker props through without affecting map-ready instrumentation', () => {

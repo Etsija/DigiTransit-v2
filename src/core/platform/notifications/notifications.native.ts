@@ -1,13 +1,37 @@
 import { Platform } from 'react-native';
 
-import type { NotificationPermissionState, NotificationPlatformAdapter } from './index';
+import type {
+  ImmediateNotification,
+  NotificationPermissionState,
+  NotificationPlatformAdapter,
+} from './index';
 
 const DEFAULT_ANDROID_CHANNEL_ID = 'default-departure-alerts';
+let hasConfiguredForegroundPresentation = false;
 
 function getNotificationsModule() {
   // Lazy load keeps Expo Go warnings out of unrelated imports and lets tests stub the module.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   return require('expo-notifications') as typeof import('expo-notifications');
+}
+
+function ensureForegroundNotificationPresentation() {
+  if (hasConfiguredForegroundPresentation) {
+    return;
+  }
+
+  const notificationsModule = getNotificationsModule();
+
+  notificationsModule.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+
+  hasConfiguredForegroundPresentation = true;
 }
 
 function isGranted(
@@ -62,6 +86,18 @@ async function ensureAndroidNotificationChannel() {
   });
 }
 
+async function scheduleImmediateNotification(notification: ImmediateNotification) {
+  const notificationsModule = getNotificationsModule();
+
+  await notificationsModule.scheduleNotificationAsync({
+    content: {
+      title: notification.title,
+      body: notification.body,
+    },
+    trigger: null,
+  });
+}
+
 export const notificationPlatformAdapter: NotificationPlatformAdapter = {
   async getPermissionState() {
     const notificationsModule = getNotificationsModule();
@@ -75,6 +111,7 @@ export const notificationPlatformAdapter: NotificationPlatformAdapter = {
 
   async requestPermission() {
     await ensureAndroidNotificationChannel();
+    ensureForegroundNotificationPresentation();
 
     const notificationsModule = getNotificationsModule();
 
@@ -88,5 +125,12 @@ export const notificationPlatformAdapter: NotificationPlatformAdapter = {
 
   async prepareRuntime() {
     await ensureAndroidNotificationChannel();
+    ensureForegroundNotificationPresentation();
+  },
+
+  async sendImmediateNotification(notification) {
+    await ensureAndroidNotificationChannel();
+    ensureForegroundNotificationPresentation();
+    await scheduleImmediateNotification(notification);
   },
 };

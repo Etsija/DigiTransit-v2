@@ -114,7 +114,13 @@ jest.mock('@/core/platform/notifications', () => ({
       granted: true,
       canPrompt: true,
     })),
+    prepareRuntime: jest.fn(),
+    sendImmediateNotification: jest.fn(),
   },
+}));
+
+jest.mock('@/features/notifications/hooks/use-home-stop-launch-notification', () => ({
+  useHomeStopLaunchNotification: jest.fn(),
 }));
 
 jest.mock('expo-constants', () => ({

@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 
 import { requestGraphql } from '@/core/api/graphql-client';
@@ -194,6 +195,20 @@ export function normalizeStopDepartures(
   };
 }
 
+export function fetchStopDepartures(stopId: string) {
+  return requestGraphql(StopDeparturesQueryDocument, { id: stopId });
+}
+
+export async function fetchStopDeparturesModel(queryClient: QueryClient, stopId: string) {
+  const data = await queryClient.fetchQuery({
+    queryKey: queryKeys.departures.stop(stopId),
+    queryFn: () => fetchStopDepartures(stopId),
+    retry: false,
+  });
+
+  return normalizeStopDepartures(data);
+}
+
 export function useStopDepartures({ stopId, enabled = true }: UseStopDeparturesOptions) {
   const departuresPollingIntervalSeconds = useSettingsStore(
     (state) => state.departuresPollingIntervalSeconds
@@ -202,7 +217,7 @@ export function useStopDepartures({ stopId, enabled = true }: UseStopDeparturesO
 
   return useQuery({
     queryKey: hasStopId ? queryKeys.departures.stop(stopId) : ['departures', 'stop', 'missing-id'],
-    queryFn: () => requestGraphql(StopDeparturesQueryDocument, { id: stopId! }),
+    queryFn: () => fetchStopDepartures(stopId!),
     enabled: enabled && hasStopId,
     refetchInterval: departuresPollingIntervalSeconds * 1000,
     select: normalizeStopDepartures,

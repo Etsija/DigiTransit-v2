@@ -16,4 +16,6 @@ export const notificationPlatformAdapter: NotificationPlatformAdapter = {
   },
 
   async prepareRuntime() {},
+
+  async sendImmediateNotification() {},
 };
