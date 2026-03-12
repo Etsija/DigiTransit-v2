@@ -215,7 +215,7 @@ User taps any stop (on map or in list) and immediately sees next departures with
 
 ### Epic 4: Settings & Personalization
 
-User configures all 7 app parameters (search radius, location/stops/departures polling intervals, push notifications toggle, notification lead time, home stop display and clearing), with all changes persisting across sessions and immediately affecting behaviour across the app.
+User configures all core settings controls (search radius, location/stops/departures polling intervals, push notifications master toggle, home-stop launch notification toggle, notification lead time, home stop display and clearing), with all changes persisting across sessions and immediately affecting behaviour across the app.
 
 **FRs covered:** FR25, FR26, FR27, FR28, FR30, FR31–FR35
 **NFRs covered:** NFR7, NFR12
@@ -231,12 +231,12 @@ User receives automatic departure notifications without navigating the app: an o
 
 ---
 
-### Epic 6: Build & Release
+### Epic 6: Miscellaneous Features & Fixes
 
-The app is buildable and distributable on iOS and Android via EAS Build development, preview, and production profiles, with CI quality gates (typecheck, lint, format:check, codegen validation) enforced on all PRs.
+The core build/release capabilities were implemented earlier than planned, so the final epic is repurposed as a controlled buffer for residual bug fixes, cross-platform hardening, small UX/accessibility polish, and documentation cleanup discovered after the main feature work. Existing completed stories remain unchanged; Epic 6 only captures remaining backlog work that improves stability and finish quality without expanding MVP scope.
 
-**FRs covered:** (none — delivery infrastructure)
-**NFRs covered:** (deployment architecture)
+**FRs covered:** FR38–FR42 (hardening existing behaviour)
+**NFRs covered:** NFR3, NFR8, NFR10, NFR11, NFR12, NFR13
 
 ---
 
@@ -311,7 +311,7 @@ So that all user preferences are available app-wide from first launch with no co
 
 **Given** the app is launched for the first time
 **When** the settings store is accessed
-**Then** all 7 settings return defaults: search radius 250m, location update interval 20s, stops polling interval 20s, departures polling interval 10s, home stop null, push notifications off, notification lead time 10min (FR37)
+**Then** all settings return defaults: search radius 250m, location update interval 20s, stops polling interval 20s, departures polling interval 10s, home stop null, push notifications off, home-stop launch notifications on, notification lead time 10min (FR37)
 
 **Given** a user changed a setting in a previous session
 **When** the app launches again
@@ -328,7 +328,7 @@ So that all user preferences are available app-wide from first launch with no co
 **Technical notes:**
 - `src/core/store/settings.store.ts` — Zustand store with `persist` middleware (AsyncStorage)
 - `src/core/store/migrations.ts` — handles schema version upgrades
-- `src/features/settings/schema/settings.schema.ts` — Zod schema for all 7 settings
+- `src/features/settings/schema/settings.schema.ts` — Zod schema for the complete settings model, including the independent home-stop launch notification toggle
 - Storage keys: `app.settings.v1`, `app.homeStop.v1`
 
 ---
@@ -773,7 +773,7 @@ So that the information stays current without any manual action on my part (FR22
 
 ## Epic 4: Settings & Personalization
 
-User configures all 7 app parameters (search radius, location/stops/departures polling intervals, push notifications toggle, notification lead time, home stop display and clearing), with all changes persisting across sessions and immediately affecting behaviour across the app.
+User configures all core settings controls (search radius, location/stops/departures polling intervals, push notifications master toggle, home-stop launch notification toggle, notification lead time, home stop display and clearing), with all changes persisting across sessions and immediately affecting behaviour across the app.
 
 **FRs covered:** FR25, FR26, FR27, FR28, FR30, FR31–FR35
 **NFRs covered:** NFR7, NFR12
@@ -790,7 +790,7 @@ So that I can tune the app to match my connection speed and battery preferences 
 
 **Given** the user taps the Settings tab
 **When** the screen renders
-**Then** it displays a plain functional layout (no glassmorphism — settings is utility, not spatial) with labelled rows for all 7 configurable values
+**Then** it displays a plain functional layout (no glassmorphism — settings is utility, not spatial) with labelled rows for all configurable settings values
 
 **Given** the user changes the search radius (FR31)
 **When** the new value is saved
@@ -853,11 +853,16 @@ So that I control whether and how early I get departure alerts (FR27, FR28, FR35
 
 **Given** the user taps the push notifications toggle when it is currently on
 **When** the toggle is deactivated
-**Then** the toggle turns off immediately, home-stop launch notifications cease (FR27), and no OS permission prompt is shown
+**Then** the toggle turns off immediately, all notification features are disabled, and no OS permission prompt is shown
+
+**Given** push notifications are enabled and a home stop is configured
+**When** the user toggles off the dedicated home-stop launch notification setting
+**Then** the automatic on-launch home stop notification is disabled without disabling per-departure notification scheduling
+**And** the setting persists across app restarts
 
 **Given** push notifications are enabled
 **When** the user taps the notification lead time row
-**Then** they can set a default lead time in minutes (e.g. 5, 10, 15) which is used as the pre-selected option in the `DepartureNotificationDialog` (FR28, FR35)
+**Then** they can set a default lead time in minutes (e.g. 5, 10, 15, 30) which is used as the pre-selected option in the `DepartureNotificationDialog` (FR28, FR35)
 
 **Given** the notification lead time row
 **When** push notifications are disabled
@@ -1011,62 +1016,63 @@ So that UI iteration is faster, styling intent is easier to read, and the codeba
 
 ---
 
-## Epic 6: Build & Release
+## Epic 6: Miscellaneous Features & Fixes
 
-The app is buildable and distributable on iOS and Android via EAS Build development, preview, and production profiles, with CI quality gates (typecheck, lint, format:check, codegen validation) enforced on all PRs.
+The core build/release capabilities were implemented earlier than planned, so the final epic is repurposed as a controlled buffer for residual bug fixes, cross-platform hardening, small UX/accessibility polish, and documentation cleanup discovered after the main feature work. Existing completed stories remain unchanged; Epic 6 only captures remaining backlog work that improves stability and finish quality without expanding MVP scope.
 
-**FRs covered:** (none — delivery infrastructure)
-**NFRs covered:** (deployment architecture)
-
----
-
-### Story 6.1: EAS Build Profiles
-
-As a developer,
-I want EAS Build profiles configured for development, preview, and production,
-So that I can build and distribute the app on iOS and Android without App Store submission.
-
-**Acceptance Criteria:**
-
-**Given** `eas.json` is configured
-**When** `eas build --profile development --platform android` is run
-**Then** a development build is produced with `expo-dev-client` included, installable via sideload
-
-**Given** `eas build --profile preview --platform android` is run
-**When** the build completes
-**Then** an APK is produced suitable for internal testing (no Play Store submission required)
-
-**Given** `eas build --profile production --platform android` is run
-**When** the build completes
-**Then** a production-signed AAB is produced
-
-**Given** `eas build --profile development --platform ios` is run
-**When** the build completes
-**Then** an IPA is produced installable via TestFlight or sideload
-
-**Given** any EAS build profile
-**When** the build runs
-**Then** `EXPO_PUBLIC_DIGITRANSIT_API_KEY` is sourced from EAS Secrets — not from a committed `.env` file
+**FRs covered:** FR38–FR42 (hardening existing behaviour)
+**NFRs covered:** NFR3, NFR8, NFR10, NFR11, NFR12, NFR13
 
 ---
 
-### Story 6.2: CI Quality Gates
+### Story 6.1: Final Polish, Accessibility & Documentation Cleanup
 
 As a developer,
-I want CI checks to enforce typecheck, lint, formatting, and codegen validation on every PR,
-So that code quality is maintained automatically and no stale generated files reach the main branch.
+I want a final bucket for targeted polish, layout fixes, and small UX corrections discovered during device validation,
+So that the app is easier to use, easier to demo, and more aligned with the intended production experience after core implementation is complete.
 
 **Acceptance Criteria:**
 
-**Given** a pull request is opened or updated
-**When** the CI pipeline runs
-**Then** all four gates must pass: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm codegen:check`
-**And** any failure blocks the PR from merging
+**Given** the app resolves the user's current location into a readable address
+**When** the `CoordinatesBar` renders in Map, Stops, or Departures-related views
+**Then** it shows the resolved current address as the primary label instead of the placeholder/test text `Current location`
+**And** the coordinate pair remains visible as supporting metadata
+**And** the Showcase `CoordinatesBar` presentation remains the visual reference for the production component
 
-**Given** `pnpm codegen:check` runs
-**When** `.graphql` source files have changed but `src/generated/` has not been regenerated
-**Then** the check fails with a clear message indicating which files are stale
+**Given** the Settings screen is scrolled to its lower boundary
+**When** the footer save section is displayed
+**Then** excessive vertical empty space between the scrolled settings content and the footer action area is removed
+**And** the `No changes to save` / `Save settings` section sits lower and feels anchored to the bottom action area rather than floating too high
 
-**Given** the existing CI workflow
-**When** it is reviewed
-**Then** `format:check` and `codegen:check` gates are added if not already present, completing the four-gate suite
+**Given** the Stops tab contains only a small number of fetched stops
+**When** the list content height is shorter than the viewport
+**Then** the stops list container still extends visually toward the lower content boundary in a way consistent with the Departures view
+**And** the layout does not appear prematurely cut off above the tab bar region
+
+**Given** the user has panned or zoomed away from their live position on the Map view
+**When** they tap a visible targeting / recenter control
+**Then** the map recentres on the user's current location
+**And** the control uses a clear targeting-reticle style icon or similarly recognisable location affordance
+
+**Given** the user schedules a departure notification
+**When** lead time options are shown in Settings or the departure notification dialog
+**Then** `30 min` is available as an additional lead-time option alongside the existing values
+
+**Given** push notifications are enabled overall and a home stop is configured
+**When** the user opens Settings
+**Then** they can independently disable the automatic home-stop-on-launch notification without disabling all other push notification capabilities
+**And** disabling this setting stops the home stop launch notification from firing
+**And** per-departure notification scheduling remains available when general push notifications are still enabled
+
+**Given** a fresh developer or reviewer follows the repo setup and validation flow
+**When** they use the project documentation and environment examples
+**Then** the instructions accurately reflect the current scripts, prerequisites, and expected quality checks
+
+**Given** a final sprint closeout review is performed
+**When** remaining low-risk fixes or micro-enhancements are identified
+**Then** they are either completed inside this story or explicitly documented as post-sprint backlog items instead of spawning a new delivery epic
+
+**Technical notes:**
+- This story is driven by device validation findings from the current app state, including the attached reference screenshots
+- Preserve the existing architecture, design tokens, and accepted story boundaries where possible, but allow small settings-model adjustments when required for the independent home-stop notification toggle
+- Treat the CoordinatesBar address label, Map recenter affordance, bottom spacing corrections, and notification-option tweaks as the concrete implementation targets for this story
