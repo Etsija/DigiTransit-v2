@@ -108,7 +108,8 @@ export function StopCard({
       onPressOut={handlePressOut}
       accessibilityRole='button'
       accessibilityLabel={accessibilityParts.join(', ')}
-      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+      className='min-h-11'
+      style={({ pressed }) => pressed && styles.pressed}
     >
       <View style={styles.surface}>
         <SafeLinearGradient
@@ -123,7 +124,7 @@ export function StopCard({
           style={StyleSheet.absoluteFillObject}
         />
 
-        <View style={styles.content}>
+        <View className='flex-row items-center gap-2'>
           <View
             style={[
               styles.iconBadge,
@@ -143,8 +144,8 @@ export function StopCard({
             />
           </View>
 
-          <View style={styles.textContent}>
-            <View style={styles.nameRow}>
+          <View className='flex-1 gap-1'>
+            <View className='flex-row items-center gap-2'>
               <Text style={styles.nameText}>{name}</Text>
               {isPinned ? (
                 <View
@@ -188,9 +189,6 @@ export function StopCard({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    minHeight: theme.layout.minTouchTarget,
-  },
   surface: {
     borderRadius: theme.radius.card,
     borderWidth: theme.borderWidth.subtle,
@@ -200,26 +198,12 @@ const styles = StyleSheet.create({
     minHeight: theme.layout.minTouchTarget,
     overflow: 'hidden',
   },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
   iconBadge: {
     width: theme.glass.iconBadgeSize,
     height: theme.glass.iconBadgeSize,
     borderRadius: theme.glass.iconBadgeRadius,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  textContent: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
   },
   codeBadge: {
     borderRadius: theme.radius.badge,

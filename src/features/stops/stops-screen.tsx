@@ -96,7 +96,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
   ]);
 
   return (
-    <View style={styles.container}>
+    <View className='flex-1' style={styles.container}>
       <Image
         source={require('../../../assets/images/map-backdrop.png')}
         blurRadius={1}
@@ -108,8 +108,8 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
       <View style={styles.backdropScrim} />
       <View style={styles.backdropTint} />
 
-      <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.content, { paddingBottom: bottomContentInset }]}>
+      <SafeAreaView className='flex-1'>
+        <View className='flex-1 gap-4 p-4' style={{ paddingBottom: bottomContentInset }}>
           <CoordinatesBar
             isFixed={location.isFixed}
             latitude={location.coordinates?.latitude ?? null}
@@ -117,8 +117,8 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
           />
 
           <View style={styles.panel}>
-            <View style={styles.panelHeader}>
-              <View style={styles.headerCopy}>
+            <View className='flex-row items-start justify-between gap-3 pb-3'>
+              <View className='flex-1 gap-1'>
                 <Text style={styles.title}>Nearby stops</Text>
                 <Text style={styles.subtitle}>
                   Long-press a stop to pin it as your home stop. Long-press the pinned one again to
@@ -126,7 +126,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
                 </Text>
               </View>
               {showInlineRefresh ? (
-                <View style={styles.refreshIndicator}>
+                <View className='flex-row items-center gap-2'>
                   <ActivityIndicator
                     color={theme.colors.text.secondary}
                     size='small'
@@ -138,7 +138,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
             </View>
 
             {showDeniedState ? (
-              <View style={styles.flexFill}>
+              <View className='flex-1'>
                 <LocationDeniedState
                   canRequestAgain={
                     location.permission.canAskAgain || !location.hasRequestedPermission
@@ -265,11 +265,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
-  },
   panel: {
     flex: 1,
     borderRadius: theme.radius.card,
@@ -279,17 +274,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
-  },
-  panelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: theme.spacing.xs,
   },
   title: {
     color: theme.colors.text.primary,
@@ -301,11 +285,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sm.fontSize,
     fontWeight: theme.typography.sm.fontWeight,
     lineHeight: 18,
-  },
-  refreshIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
   },
   refreshText: {
     color: theme.colors.text.secondary,
@@ -321,8 +300,5 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: theme.spacing['2xl'],
     gap: theme.layout.cardListGap,
-  },
-  flexFill: {
-    flex: 1,
   },
 });

@@ -55,8 +55,8 @@ export function StopHeaderCard({
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={styles.textContainer}>
-        <View style={styles.titleRow}>
+      <View className='w-full gap-1'>
+        <View className='w-full flex-row items-center gap-2'>
           <View
             style={[
               styles.inlineIconBadge,
@@ -78,7 +78,7 @@ export function StopHeaderCard({
           <Text style={styles.nameText}>{name}</Text>
         </View>
         {directionLabel ? <Text style={styles.directionText}>{`-> ${directionLabel}`}</Text> : null}
-        <View style={styles.metaRow}>
+        <View className='flex-row flex-wrap items-center gap-2'>
           {code ? <Text style={[styles.codeText, { color: transportColor }]}>{code}</Text> : null}
           {zoneLabel ? <Text style={styles.zoneText}>{zoneLabel}</Text> : null}
         </View>
@@ -94,19 +94,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.card.border,
     backgroundColor: theme.colors.card.bg,
     padding: theme.spacing.lg,
-    flexDirection: 'column',
-    alignItems: 'stretch',
     overflow: 'hidden',
-  },
-  textContainer: {
-    width: '100%',
-    gap: theme.spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    width: '100%',
   },
   inlineIconBadge: {
     width: 24,
@@ -115,12 +103,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
   },
   nameText: {
     color: theme.colors.text.primary,
