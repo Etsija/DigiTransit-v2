@@ -482,18 +482,45 @@ describe('Transport & Status UI Components', () => {
       });
     });
 
-    it('renders cancel-mode presentation', () => {
-      const { getByText } = render(
+    it('renders cancel-mode presentation and keeps both actions wired', () => {
+      const onCancel = jest.fn();
+      const onDismiss = jest.fn();
+      const { getByRole, getByText } = render(
         <DepartureNotificationDialog
           mode='cancel'
           routeShortName='7A'
           departureTime='14:35'
+          onCancel={onCancel}
+          onDismiss={onDismiss}
+        />
+      );
+
+      expect(getByText('Cancel notification for this departure?')).toBeTruthy();
+
+      fireEvent.press(getByRole('button', { name: 'Cancel notification for this departure' }));
+      fireEvent.press(getByRole('button', { name: 'Dismiss' }));
+
+      expect(onCancel).toHaveBeenCalledTimes(1);
+      expect(onDismiss).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables the cancel action while cancellation is in flight', () => {
+      const { getByRole, getByText } = render(
+        <DepartureNotificationDialog
+          mode='cancel'
+          routeShortName='7A'
+          departureTime='14:35'
+          isSubmitting
           onCancel={() => {}}
           onDismiss={() => {}}
         />
       );
 
-      expect(getByText(/Cancel/)).toBeTruthy();
+      expect(getByText('Cancelling...')).toBeTruthy();
+      expect(
+        getByRole('button', { name: 'Cancel notification for this departure' }).props
+          .accessibilityState.disabled
+      ).toBe(true);
     });
   });
 });

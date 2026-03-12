@@ -28,6 +28,7 @@ type CancelProps = {
   departureTime: string;
   onCancel: () => void;
   onDismiss: () => void;
+  isSubmitting?: boolean;
   onLeadTimeChange?: never;
   onNotify?: never;
 };
@@ -111,7 +112,9 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
             })}
           </View>
         </View>
-      ) : null}
+      ) : (
+        <Text style={styles.preferenceText}>Cancel notification for this departure?</Text>
+      )}
 
       <View style={styles.actions}>
         {mode === 'idle' ? (
@@ -132,11 +135,16 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
           </Pressable>
         ) : (
           <Pressable
+            accessibilityLabel='Cancel notification for this departure'
+            accessibilityState={{ disabled: props.isSubmitting === true }}
+            disabled={props.isSubmitting === true}
             onPress={props.onCancel}
             style={styles.cancelButton}
             accessibilityRole='button'
           >
-            <Text style={styles.cancelButtonText}>Cancel Notification</Text>
+            <Text style={styles.cancelButtonText}>
+              {props.isSubmitting ? 'Cancelling...' : 'Cancel Notification'}
+            </Text>
           </Pressable>
         )}
 

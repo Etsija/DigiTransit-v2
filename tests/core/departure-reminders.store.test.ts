@@ -81,4 +81,26 @@ describe('departure reminders store', () => {
 
     jest.useRealTimers();
   });
+
+  it('removes only the targeted reminder record', () => {
+    const store = createDepartureReminderStore(createMemoryStorage());
+
+    store.getState().setReminder('first', {
+      notificationId: 'scheduled-id-1',
+      fireAtMs: 4_102_444_800_000,
+    });
+    store.getState().setReminder('second', {
+      notificationId: 'scheduled-id-2',
+      fireAtMs: 4_102_444_860_000,
+    });
+
+    store.getState().removeReminder('first');
+
+    expect(store.getState().remindersByKey).toEqual({
+      second: {
+        notificationId: 'scheduled-id-2',
+        fireAtMs: 4_102_444_860_000,
+      },
+    });
+  });
 });
