@@ -12,6 +12,7 @@ import {
   useDeviceLocation,
 } from '@/features/map/hooks/use-device-location';
 import { createMapStopMarkers } from '@/features/map/hooks/use-map-stop-markers';
+import { useHomeStopLaunchNotification } from '@/features/notifications/hooks/use-home-stop-launch-notification';
 import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { ErrorBanner } from '@/shared/components/error-banner';
@@ -42,6 +43,7 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   );
   const searchRadiusMeters = useSettingsStore((state) => state.searchRadiusMeters);
   const homeStopId = useSettingsStore((state) => state.homeStop?.gtfsId ?? null);
+  useHomeStopLaunchNotification({ isActive });
   const location = useDeviceLocation({
     intervalSeconds: locationUpdateIntervalSeconds,
     isActive,

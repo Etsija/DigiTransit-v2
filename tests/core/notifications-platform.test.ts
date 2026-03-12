@@ -28,6 +28,7 @@ describe('notificationPlatformAdapter.native', () => {
         },
       })),
       requestPermissionsAsync: jest.fn(),
+      setNotificationHandler: jest.fn(),
       setNotificationChannelAsync: jest.fn(),
     }));
 
@@ -44,6 +45,7 @@ describe('notificationPlatformAdapter.native', () => {
 
   it('bootstraps the Android notification channel before requesting permission', async () => {
     const setNotificationChannelAsync = jest.fn(async () => {});
+    const setNotificationHandler = jest.fn();
     const requestPermissionsAsync = jest.fn(async () => ({
       granted: true,
       canAskAgain: true,
@@ -68,6 +70,7 @@ describe('notificationPlatformAdapter.native', () => {
       },
       getPermissionsAsync: jest.fn(),
       requestPermissionsAsync,
+      setNotificationHandler,
       setNotificationChannelAsync,
     }));
 
@@ -86,6 +89,7 @@ describe('notificationPlatformAdapter.native', () => {
 
   it('can prepare the Android runtime without prompting for permission', async () => {
     const setNotificationChannelAsync = jest.fn(async () => {});
+    const setNotificationHandler = jest.fn();
     const requestPermissionsAsync = jest.fn(async () => ({
       granted: true,
       canAskAgain: true,
@@ -110,6 +114,7 @@ describe('notificationPlatformAdapter.native', () => {
       },
       getPermissionsAsync: jest.fn(),
       requestPermissionsAsync,
+      setNotificationHandler,
       setNotificationChannelAsync,
     }));
 
@@ -123,7 +128,104 @@ describe('notificationPlatformAdapter.native', () => {
       name: 'Departure alerts',
       importance: 3,
     });
+    expect(setNotificationHandler).toHaveBeenCalledWith({
+      handleNotification: expect.any(Function),
+    });
     expect(requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('sends an immediate local notification through Expo Notifications after runtime prep', async () => {
+    const setNotificationChannelAsync = jest.fn(async () => {});
+    const setNotificationHandler = jest.fn();
+    const scheduleNotificationAsync = jest.fn(async () => 'notification-id');
+
+    jest.doMock('react-native', () => ({
+      Platform: {
+        OS: 'android',
+      },
+    }));
+    jest.doMock('expo-notifications', () => ({
+      IosAuthorizationStatus: {
+        AUTHORIZED: 2,
+        PROVISIONAL: 3,
+        EPHEMERAL: 4,
+      },
+      AndroidImportance: {
+        DEFAULT: 3,
+      },
+      SchedulableTriggerInputTypes: {
+        TIME_INTERVAL: 'timeInterval',
+      },
+      getPermissionsAsync: jest.fn(),
+      requestPermissionsAsync: jest.fn(),
+      setNotificationHandler,
+      setNotificationChannelAsync,
+      scheduleNotificationAsync,
+    }));
+
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.native');
+
+    await notificationPlatformAdapter.sendImmediateNotification({
+      title: 'Next 550 from Kamppi at 12:04',
+      body: 'in 3 min',
+    });
+
+    expect(setNotificationChannelAsync).toHaveBeenCalledWith('default-departure-alerts', {
+      name: 'Departure alerts',
+      importance: 3,
+    });
+    expect(setNotificationHandler).toHaveBeenCalledWith({
+      handleNotification: expect.any(Function),
+    });
+    expect(scheduleNotificationAsync).toHaveBeenCalledWith({
+      content: {
+        title: 'Next 550 from Kamppi at 12:04',
+        body: 'in 3 min',
+      },
+      trigger: null,
+    });
+  });
+
+  it('configures foreground presentation so immediate notifications can be shown while the app is open', async () => {
+    const setNotificationChannelAsync = jest.fn(async () => {});
+    const setNotificationHandler = jest.fn();
+
+    jest.doMock('react-native', () => ({
+      Platform: {
+        OS: 'android',
+      },
+    }));
+    jest.doMock('expo-notifications', () => ({
+      IosAuthorizationStatus: {
+        AUTHORIZED: 2,
+        PROVISIONAL: 3,
+        EPHEMERAL: 4,
+      },
+      AndroidImportance: {
+        DEFAULT: 3,
+      },
+      getPermissionsAsync: jest.fn(),
+      requestPermissionsAsync: jest.fn(),
+      setNotificationHandler,
+      setNotificationChannelAsync,
+    }));
+
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.native');
+
+    await notificationPlatformAdapter.prepareRuntime();
+
+    const firstCall = setNotificationHandler.mock.calls[0]?.[0];
+    expect(firstCall).toBeDefined();
+    await expect(firstCall.handleNotification()).resolves.toEqual({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    });
   });
 });
 
@@ -138,5 +240,18 @@ describe('notificationPlatformAdapter.web', () => {
       granted: false,
       canPrompt: false,
     });
+  });
+
+  it('is a hard no-op for immediate local notifications on web', async () => {
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.web');
+
+    await expect(
+      notificationPlatformAdapter.sendImmediateNotification({
+        title: 'ignored',
+        body: 'ignored',
+      })
+    ).resolves.toBeUndefined();
   });
 });
