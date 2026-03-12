@@ -17,7 +17,7 @@ type ReminderFireDateInput = Pick<StopDeparture, 'serviceDay' | 'scheduledDepart
   now?: Date;
 };
 
-export const departureReminderLeadTimeOptions = [5, 10, 15] as const;
+export const departureReminderLeadTimeOptions = [5, 10, 15, 30] as const;
 
 export function buildDepartureReminderKey({
   stopId,

@@ -59,18 +59,24 @@ In the output, you'll find options to open the app in a
 You can start developing by editing files under `src/`. Route entry points live in `src/app`,
 feature code in `src/features`, and platform adapters in `src/core/platform`.
 
-## Verification
+## Quality checks
 
-- `pnpm test -- --runInBand tests/features/map-screen.test.tsx tests/core/platform/map-view.native.test.tsx tests/core/platform/map-view.web.test.tsx`
-- `pnpm typecheck`
-- `pnpm lint`
-- `pnpm test:ci`
+Run all checks at once:
 
-## Notes
+```bash
+pnpm check
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Individual checks:
+
+| Command             | Purpose                        |
+| ------------------- | ------------------------------ |
+| `pnpm lint`         | ESLint                         |
+| `pnpm typecheck`    | TypeScript type checking       |
+| `pnpm format:check` | Prettier formatting validation |
+| `pnpm test`         | Jest unit/integration tests    |
+| `pnpm test:ci`      | Full test suite (CI mode)      |
+| `pnpm codegen`      | Regenerate GraphQL types       |
 
 ## Learn more
 

@@ -73,6 +73,7 @@ describe('useHomeStopLaunchNotification', () => {
         selector: (state: {
           homeStop: { gtfsId: string; name: string } | null;
           pushNotificationsEnabled: boolean;
+          homeStopLaunchNotificationEnabled: boolean;
           notificationLeadTimeMinutes: number;
         }) => unknown
       ) =>
@@ -82,6 +83,7 @@ describe('useHomeStopLaunchNotification', () => {
             name: 'Kamppi',
           },
           pushNotificationsEnabled: true,
+          homeStopLaunchNotificationEnabled: true,
           notificationLeadTimeMinutes: 10,
         })
     );
@@ -151,6 +153,7 @@ describe('useHomeStopLaunchNotification', () => {
         selector: (state: {
           homeStop: { gtfsId: string; name: string } | null;
           pushNotificationsEnabled: boolean;
+          homeStopLaunchNotificationEnabled: boolean;
           notificationLeadTimeMinutes: number;
         }) => unknown
       ) =>
@@ -160,6 +163,7 @@ describe('useHomeStopLaunchNotification', () => {
             name: 'Kamppi',
           },
           pushNotificationsEnabled: false,
+          homeStopLaunchNotificationEnabled: true,
           notificationLeadTimeMinutes: 10,
         })
     );
@@ -181,12 +185,14 @@ describe('useHomeStopLaunchNotification', () => {
         selector: (state: {
           homeStop: { gtfsId: string; name: string } | null;
           pushNotificationsEnabled: boolean;
+          homeStopLaunchNotificationEnabled: boolean;
           notificationLeadTimeMinutes: number;
         }) => unknown
       ) =>
         selector({
           homeStop: null,
           pushNotificationsEnabled: true,
+          homeStopLaunchNotificationEnabled: true,
           notificationLeadTimeMinutes: 10,
         })
     );

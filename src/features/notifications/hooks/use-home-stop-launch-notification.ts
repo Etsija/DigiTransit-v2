@@ -35,6 +35,9 @@ export function useHomeStopLaunchNotification({
   const queryClient = useQueryClient();
   const homeStop = useSettingsStore((state) => state.homeStop);
   const pushNotificationsEnabled = useSettingsStore((state) => state.pushNotificationsEnabled);
+  const homeStopLaunchNotificationEnabled = useSettingsStore(
+    (state) => state.homeStopLaunchNotificationEnabled
+  );
   const notificationLeadTimeMinutes = useSettingsStore(
     (state) => state.notificationLeadTimeMinutes
   );
@@ -64,7 +67,13 @@ export function useHomeStopLaunchNotification({
   React.useEffect(() => {
     const homeStopId = homeStop?.gtfsId?.trim();
 
-    if (!isActive || appState !== 'active' || !pushNotificationsEnabled || !homeStopId) {
+    if (
+      !isActive ||
+      appState !== 'active' ||
+      !pushNotificationsEnabled ||
+      !homeStopLaunchNotificationEnabled ||
+      !homeStopId
+    ) {
       return;
     }
 
@@ -128,6 +137,7 @@ export function useHomeStopLaunchNotification({
     appState,
     homeStop?.gtfsId,
     homeStop?.name,
+    homeStopLaunchNotificationEnabled,
     isActive,
     notificationLeadTimeMinutes,
     pushNotificationsEnabled,

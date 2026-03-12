@@ -4,6 +4,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
 import { StopsScreen } from '@/features/stops/stops-screen';
+import { theme } from '@/shared/theme/theme';
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
@@ -174,7 +175,12 @@ describe('StopsScreen', () => {
     expect(stopButtons[0]?.props.accessibilityLabel).toContain('Central station');
     expect(stopButtons[1]?.props.accessibilityLabel).toContain('Railway Square');
 
-    expect(screen.getByTestId('stops-static-backdrop')).toBeTruthy();
+    expect(screen.getByTestId('stops-static-backdrop').props.blurRadius).toBe(
+      theme.glass.screenBackdropBlurRadius
+    );
+    expect(screen.getByTestId('stops-static-backdrop').props.style.opacity).toBe(
+      theme.glass.screenBackdropOpacity
+    );
     expect(screen.queryByTestId('live-map-surface')).toBeNull();
   });
 

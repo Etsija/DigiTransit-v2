@@ -49,6 +49,7 @@ export function PlatformMapView({
   latitude,
   longitude,
   camera,
+  recenterRequestKey = 0,
   markers = [],
   onMapReady,
   showUserLocation,
@@ -63,7 +64,7 @@ export function PlatformMapView({
       buildRegion(camera?.latitude ?? latitude, camera?.longitude ?? longitude),
       250
     );
-  }, [camera?.latitude, camera?.longitude, latitude, longitude]);
+  }, [camera?.latitude, camera?.longitude, latitude, longitude, recenterRequestKey]);
 
   useEffect(() => {
     if (tracksViewChangesTimeoutRef.current) {

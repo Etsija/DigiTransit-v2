@@ -108,7 +108,7 @@ const radius = {
 const layout = {
   screenPadding: 16,
   coordinatesBarHeight: 44,
-  tabBarHeight: 64,
+  tabBarHeight: 32,
   cardListGap: 12,
   minTouchTarget: 44,
   markerSizeBase: 28,
@@ -129,6 +129,14 @@ const borderWidth = {
 const glass = {
   blurIntensity: 18,
   glassStyle: 'regular' as const,
+  /** Static image blur used on Stops/Departures backdrop layers */
+  screenBackdropBlurRadius: 2,
+  /** Base backdrop image opacity before screen overlays */
+  screenBackdropOpacity: 0.78,
+  /** Dark scrim layered above static backdrops */
+  screenBackdropScrim: 'rgba(0, 0, 0, 0)',
+  /** Cool tint layered above static backdrops */
+  screenBackdropTint: 'rgba(4, 7, 12, 0.14)',
   /** Transport colour tint opacity for StopCard C+D treatment */
   transportTintOpacity: 0.11,
   /** Icon badge background opacity */

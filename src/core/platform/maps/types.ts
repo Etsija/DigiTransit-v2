@@ -24,6 +24,7 @@ export type PlatformMapViewProps = {
   longitude: number;
   showUserLocation: boolean;
   camera?: PlatformMapCamera;
+  recenterRequestKey?: number;
   markers?: PlatformMapMarker[];
   onMapReady?: () => void;
 };

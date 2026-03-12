@@ -10,6 +10,7 @@ import {
   requestDeviceLocationPermission,
   useDeviceLocation,
 } from '@/features/map/hooks/use-device-location';
+import { useReverseGeocode } from '@/features/map/hooks/use-reverse-geocode';
 import { HomeStopButton } from '@/features/stops/components/home-stop-button';
 import {
   formatDistanceMeters,
@@ -47,6 +48,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
     intervalSeconds: locationUpdateIntervalSeconds,
     isActive,
   });
+  const { address: resolvedAddress } = useReverseGeocode(location.coordinates);
   const nearbyStopsQuery = useNearbyStops({
     coordinates: location.coordinates,
     enabled: isActive && Boolean(location.coordinates),
@@ -68,8 +70,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
     !showLocationErrorState &&
     !showErrorEmptyState &&
     !hasStops;
-  const bottomContentInset =
-    insets.bottom + theme.layout.tabBarHeight + theme.spacing.xl + theme.spacing.sm;
+  const bottomContentInset = insets.bottom + theme.layout.tabBarHeight;
 
   React.useEffect(() => {
     if (
@@ -99,7 +100,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
     <View className='flex-1' style={styles.container}>
       <Image
         source={require('../../../assets/images/map-backdrop.png')}
-        blurRadius={1}
+        blurRadius={theme.glass.screenBackdropBlurRadius}
         contentFit='cover'
         contentPosition='center'
         testID='stops-static-backdrop'
@@ -114,6 +115,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
             isFixed={location.isFixed}
             latitude={location.coordinates?.latitude ?? null}
             longitude={location.coordinates?.longitude ?? null}
+            resolvedAddress={resolvedAddress}
           />
 
           <View style={styles.panel}>
@@ -208,7 +210,7 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
                 keyExtractor={(item) => item.gtfsId}
                 contentContainerStyle={[
                   styles.listContent,
-                  { paddingBottom: bottomContentInset + theme.spacing.md },
+                  { paddingBottom: bottomContentInset + theme.spacing.md, flexGrow: 1 },
                 ]}
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
@@ -252,15 +254,15 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.82,
+    opacity: theme.glass.screenBackdropOpacity,
   },
   backdropScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: theme.glass.screenBackdropScrim,
   },
   backdropTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(4, 7, 12, 0.44)',
+    backgroundColor: theme.glass.screenBackdropTint,
   },
   safeArea: {
     flex: 1,
@@ -270,7 +272,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.card,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
-    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    backgroundColor: 'rgba(0, 0, 0, 0.16)',
     overflow: 'hidden',
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,

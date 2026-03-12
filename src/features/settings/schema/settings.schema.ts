@@ -89,6 +89,7 @@ const settingsFieldSchemas = {
     .min(settingsNumericBounds.notificationLeadTimeMinutes.min)
     .max(settingsNumericBounds.notificationLeadTimeMinutes.max)
     .default(settingsNumericBounds.notificationLeadTimeMinutes.defaultValue),
+  homeStopLaunchNotificationEnabled: z.boolean().default(true),
 } as const;
 
 export const settingsSchema = z.object(settingsFieldSchemas);
@@ -160,6 +161,11 @@ export function sanitizeSettings(input: unknown): Settings {
       'notificationLeadTimeMinutes',
       record.notificationLeadTimeMinutes,
       defaultSettings.notificationLeadTimeMinutes
+    ),
+    homeStopLaunchNotificationEnabled: parseField(
+      'homeStopLaunchNotificationEnabled',
+      record.homeStopLaunchNotificationEnabled,
+      defaultSettings.homeStopLaunchNotificationEnabled
     ),
   };
 }

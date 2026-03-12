@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 import { departureReminderStore } from '@/core/store/departure-reminders.store';
 import { getSettingsStore } from '@/core/store/settings.store';
 import { DeparturesScreen } from '@/features/departures/departures-screen';
+import { theme } from '@/shared/theme/theme';
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
@@ -610,7 +611,12 @@ describe('DeparturesScreen', () => {
     });
 
     expect(screen.queryByText('4 to Munkkiniemi')).toBeNull();
-    expect(screen.getByTestId('departures-static-backdrop')).toBeTruthy();
+    expect(screen.getByTestId('departures-static-backdrop').props.blurRadius).toBe(
+      theme.glass.screenBackdropBlurRadius
+    );
+    expect(screen.getByTestId('departures-static-backdrop').props.style.opacity).toBe(
+      theme.glass.screenBackdropOpacity
+    );
     expect(screen.getByTestId('departures-scroll-view')).toBeTruthy();
     expect(screen.queryByTestId('live-map-surface')).toBeNull();
     expect(screen.queryByText('Departures list arrives next')).toBeNull();

@@ -46,7 +46,7 @@ const editableFieldOrder: EditableSettingKey[] = [
   'departuresPollingIntervalSeconds',
 ];
 
-const commonNotificationLeadTimes = [5, 10, 15];
+const commonNotificationLeadTimes = [5, 10, 15, 30];
 const unsupportedNotificationPermissionState: NotificationPermissionState = {
   supported: false,
   granted: false,
@@ -440,6 +440,9 @@ export function SettingsScreenContent() {
   );
   const homeStop = useSettingsStore((state) => state.homeStop);
   const pushNotificationsEnabled = useSettingsStore((state) => state.pushNotificationsEnabled);
+  const homeStopLaunchNotificationEnabled = useSettingsStore(
+    (state) => state.homeStopLaunchNotificationEnabled
+  );
   const notificationLeadTimeMinutes = useSettingsStore(
     (state) => state.notificationLeadTimeMinutes
   );
@@ -568,6 +571,7 @@ export function SettingsScreenContent() {
           ...persistedValues,
           homeStop,
           pushNotificationsEnabled,
+          homeStopLaunchNotificationEnabled,
           notificationLeadTimeMinutes,
         }
       )
@@ -575,6 +579,7 @@ export function SettingsScreenContent() {
   }, [
     hasChanges,
     homeStop,
+    homeStopLaunchNotificationEnabled,
     notificationLeadTimeMinutes,
     parsedValues,
     persistedValues,
@@ -586,8 +591,7 @@ export function SettingsScreenContent() {
   const footerBottomInset = theme.layout.tabBarHeight + insets.bottom + theme.spacing.sm;
   const stickyFooterHeight =
     theme.layout.minTouchTarget + theme.spacing.md * 2 + theme.spacing.sm + footerBottomInset;
-  const scrollBottomPadding =
-    stickyFooterHeight + theme.layout.tabBarHeight + theme.spacing.xl + theme.spacing.lg;
+  const scrollBottomPadding = stickyFooterHeight + theme.spacing.md;
   const notificationsEnabled = pushNotificationsEnabled && notificationPermissionState.granted;
   const notificationToggleDisabled =
     isUpdatingNotificationPreference || hasLoadedNotificationPermission === false
@@ -711,6 +715,35 @@ export function SettingsScreenContent() {
               }}
               value={notificationsEnabled}
             />
+
+            <View
+              className='gap-1 border-b py-2'
+              style={[styles.row, !notificationsEnabled || !homeStop ? styles.disabledRow : null]}
+            >
+              <View className='min-h-11 flex-row items-center justify-between gap-3'>
+                <View className='flex-1 gap-1'>
+                  <ThemedText type='smallBold'>Home stop on-launch notification</ThemedText>
+                  <ThemedText themeColor='textSecondary' style={styles.helperText}>
+                    Show the next departure from your home stop when you open the app.
+                  </ThemedText>
+                </View>
+
+                <Switch
+                  accessibilityLabel='Home stop on-launch notification'
+                  disabled={!notificationsEnabled || !homeStop}
+                  onValueChange={(nextValue) => {
+                    updateSettings({ homeStopLaunchNotificationEnabled: nextValue });
+                  }}
+                  trackColor={{
+                    false: theme.colors.card.border,
+                    true: theme.colors.link.primary,
+                  }}
+                  value={
+                    homeStopLaunchNotificationEnabled && notificationsEnabled && Boolean(homeStop)
+                  }
+                />
+              </View>
+            </View>
 
             <NotificationLeadTimeRow
               disabled={!notificationsEnabled}
