@@ -92,6 +92,7 @@ describe('DeparturesScreen', () => {
       getPermissionState: jest.Mock;
       prepareRuntime: jest.Mock;
       scheduleNotification: jest.Mock;
+      cancelScheduledNotification: jest.Mock;
     };
   };
   const departureData = {
@@ -160,6 +161,7 @@ describe('DeparturesScreen', () => {
     });
     notificationPlatformAdapter.prepareRuntime.mockResolvedValue(undefined);
     notificationPlatformAdapter.scheduleNotification.mockResolvedValue('scheduled-id');
+    notificationPlatformAdapter.cancelScheduledNotification.mockResolvedValue(undefined);
     departureReminderStore.getState().reset();
     getSettingsStore().getState().updateSettings({ notificationLeadTimeMinutes: 10 });
   });
@@ -299,6 +301,202 @@ describe('DeparturesScreen', () => {
     expect(notificationPlatformAdapter.scheduleNotification).not.toHaveBeenCalled();
     expect(screen.queryByLabelText('Notification scheduled')).toBeNull();
     expect(screen.queryByText('Notify Me')).toBeNull();
+  });
+
+  it('opens cancel mode for a scheduled departure and removes the badge only after cancellation succeeds', async () => {
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::120::4::Munkkiniemi', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 60_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+
+    expect(screen.getByText('Cancel notification for this departure?')).toBeTruthy();
+    expect(screen.queryByText('Notify Me')).toBeNull();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel notification for this departure' }));
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.cancelScheduledNotification).toHaveBeenCalledWith(
+        'scheduled-id'
+      );
+      expect(screen.queryByLabelText('Notification scheduled')).toBeNull();
+      expect(screen.queryByText('Cancel notification for this departure?')).toBeNull();
+    });
+  });
+
+  it('preserves the badge when cancel mode is dismissed', async () => {
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::120::4::Munkkiniemi', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 60_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+    fireEvent.press(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(notificationPlatformAdapter.cancelScheduledNotification).not.toHaveBeenCalled();
+    expect(departureReminderStore.getState().remindersByKey).toHaveProperty(
+      'HSL:1001::1700000000::120::4::Munkkiniemi'
+    );
+    expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+  });
+
+  it('preserves the badge when scheduled notification cancellation fails', async () => {
+    notificationPlatformAdapter.cancelScheduledNotification.mockRejectedValue(new Error('boom'));
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::120::4::Munkkiniemi', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 60_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel notification for this departure' }));
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.cancelScheduledNotification).toHaveBeenCalledWith(
+        'scheduled-id'
+      );
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+  });
+
+  it('keeps the dialog in cancel mode after the store entry is pruned while the sheet is open', async () => {
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::120::4::Munkkiniemi', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 60_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+
+    act(() => {
+      departureReminderStore.getState().removeReminder('HSL:1001::1700000000::120::4::Munkkiniemi');
+    });
+
+    expect(screen.getByText('Cancel notification for this departure?')).toBeTruthy();
+    expect(screen.queryByText('Notify Me')).toBeNull();
+  });
+
+  it('prevents duplicate cancellation while a reminder cancellation is already in flight', async () => {
+    let resolveCancellation: (() => void) | undefined;
+    notificationPlatformAdapter.cancelScheduledNotification.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCancellation = resolve;
+        })
+    );
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::120::4::Munkkiniemi', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 60_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    fireEvent(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'), 'longPress');
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel notification for this departure' }));
+
+    await waitFor(() => {
+      expect(notificationPlatformAdapter.cancelScheduledNotification).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Cancelling...')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel notification for this departure' }));
+
+    expect(notificationPlatformAdapter.cancelScheduledNotification).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveCancellation?.();
+      await Promise.resolve();
+    });
+  });
+
+  it('restores a scheduled badge after navigating away and back until the reminder is canceled', async () => {
+    departureReminderStore.getState().setReminder('HSL:1001::1700000000::120::4::Munkkiniemi', {
+      notificationId: 'scheduled-id',
+      fireAtMs: Date.now() + 60_000,
+    });
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
+
+    screen.unmount();
+
+    const rerendered = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(rerendered.getByLabelText('Notification scheduled')).toBeTruthy();
+    });
   });
 
   it('prevents duplicate scheduling while a reminder request is already in flight', async () => {

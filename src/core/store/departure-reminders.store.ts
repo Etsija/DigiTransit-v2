@@ -15,6 +15,7 @@ type DepartureReminderRegistryState = {
   remindersByKey: Record<string, DepartureReminderRecord>;
   hasHydrated: boolean;
   setReminder: (key: string, reminder: DepartureReminderRecord) => void;
+  removeReminder: (key: string) => void;
   pruneExpiredReminders: (nowMs?: number) => void;
   reset: () => void;
   setHasHydrated: (value: boolean) => void;
@@ -47,6 +48,17 @@ export function createDepartureReminderStore(storage: StateStorage = getDefaultR
               [key]: reminder,
             },
           })),
+        removeReminder: (key) =>
+          set((state) => {
+            if (!(key in state.remindersByKey)) {
+              return state;
+            }
+
+            const remindersByKey = { ...state.remindersByKey };
+            delete remindersByKey[key];
+
+            return { remindersByKey };
+          }),
         pruneExpiredReminders: (nowMs = Date.now()) =>
           set((state) => ({
             remindersByKey: Object.fromEntries(

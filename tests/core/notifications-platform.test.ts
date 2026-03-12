@@ -281,6 +281,39 @@ describe('notificationPlatformAdapter.native', () => {
       shouldSetBadge: false,
     });
   });
+
+  it('delegates scheduled notification cancellation to Expo Notifications', async () => {
+    const cancelScheduledNotificationAsync = jest.fn(async () => {});
+
+    jest.doMock('react-native', () => ({
+      Platform: {
+        OS: 'android',
+      },
+    }));
+    jest.doMock('expo-notifications', () => ({
+      IosAuthorizationStatus: {
+        AUTHORIZED: 2,
+        PROVISIONAL: 3,
+        EPHEMERAL: 4,
+      },
+      AndroidImportance: {
+        DEFAULT: 3,
+      },
+      getPermissionsAsync: jest.fn(),
+      requestPermissionsAsync: jest.fn(),
+      setNotificationHandler: jest.fn(),
+      setNotificationChannelAsync: jest.fn(),
+      cancelScheduledNotificationAsync,
+    }));
+
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.native');
+
+    await notificationPlatformAdapter.cancelScheduledNotification('scheduled-notification-id');
+
+    expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith('scheduled-notification-id');
+  });
 });
 
 describe('notificationPlatformAdapter.web', () => {
@@ -321,5 +354,15 @@ describe('notificationPlatformAdapter.web', () => {
         fireAt: new Date('2026-03-12T10:00:00.000Z'),
       })
     ).resolves.toBeNull();
+  });
+
+  it('is a hard no-op for scheduled notification cancellation on web', async () => {
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.web');
+
+    await expect(
+      notificationPlatformAdapter.cancelScheduledNotification('scheduled-notification-id')
+    ).resolves.toBeUndefined();
   });
 });
