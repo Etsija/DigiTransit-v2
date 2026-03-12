@@ -47,6 +47,10 @@ jest.mock('@/features/map/hooks/use-device-location', () => ({
   requestDeviceLocationPermission: jest.fn(),
 }));
 
+jest.mock('@/features/map/hooks/use-reverse-geocode', () => ({
+  useReverseGeocode: jest.fn(() => ({ address: undefined })),
+}));
+
 jest.mock('@/features/stops/hooks/use-nearby-stops', () => ({
   useNearbyStops: jest.fn(() => ({
     data: [],
@@ -120,6 +124,7 @@ describe('MapScreen launch notification integration', () => {
           searchRadiusMeters: number;
           homeStop: { gtfsId: string; name: string } | null;
           pushNotificationsEnabled: boolean;
+          homeStopLaunchNotificationEnabled: boolean;
           notificationLeadTimeMinutes: number;
         }) => unknown
       ) =>
@@ -131,6 +136,7 @@ describe('MapScreen launch notification integration', () => {
             name: 'Kamppi',
           },
           pushNotificationsEnabled: true,
+          homeStopLaunchNotificationEnabled: true,
           notificationLeadTimeMinutes: 10,
         })
     );

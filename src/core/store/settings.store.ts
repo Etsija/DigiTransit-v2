@@ -50,6 +50,7 @@ function partializeSettingsState(state: SettingsStore): PersistedSettings {
     homeStop: state.homeStop,
     pushNotificationsEnabled: state.pushNotificationsEnabled,
     notificationLeadTimeMinutes: state.notificationLeadTimeMinutes,
+    homeStopLaunchNotificationEnabled: state.homeStopLaunchNotificationEnabled,
     settingsVersion: SETTINGS_STORAGE_VERSION,
   };
 }

@@ -26,6 +26,7 @@ import {
   isDepartureReminderLeadTimeAvailable,
   resolveDepartureReminderFireDate,
 } from '@/features/departures/utils/departure-reminders';
+import { useReverseGeocode } from '@/features/map/hooks/use-reverse-geocode';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { DepartureCard } from '@/shared/components/departure-card';
 import { DepartureNotificationDialog } from '@/shared/components/departure-notification-dialog';
@@ -80,6 +81,7 @@ type SelectedReminderDialogState = {
 };
 
 export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScreenProps) {
+  const { address: resolvedAddress } = useReverseGeocode(coordinates);
   const renderStartedAtRef = useRef(getNow());
   const hasReportedReadyRef = useRef(false);
   const schedulingReminderKeyRef = useRef<string | null>(null);
@@ -266,7 +268,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
     <View className='flex-1' style={styles.container}>
       <Image
         source={require('../../../assets/images/map-backdrop.png')}
-        blurRadius={1}
+        blurRadius={theme.glass.screenBackdropBlurRadius}
         contentFit='cover'
         contentPosition='center'
         testID='departures-static-backdrop'
@@ -281,6 +283,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
             isFixed
             latitude={coordinates?.latitude ?? null}
             longitude={coordinates?.longitude ?? null}
+            resolvedAddress={resolvedAddress}
           />
 
           {showInitialErrorBanner ? (
@@ -477,15 +480,15 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.82,
+    opacity: theme.glass.screenBackdropOpacity,
   },
   backdropScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: theme.glass.screenBackdropScrim,
   },
   backdropTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(4, 7, 12, 0.44)',
+    backgroundColor: theme.glass.screenBackdropTint,
   },
   safeArea: {
     flex: 1,
@@ -495,7 +498,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.card,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
-    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    backgroundColor: 'rgba(0, 0, 0, 0.16)',
     overflow: 'hidden',
   },
   panelContent: {

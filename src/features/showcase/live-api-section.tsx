@@ -153,9 +153,6 @@ export function LiveApiSection({
         Stop name: {departuresQuery.data?.stop?.name ?? nearbyStop.stop.name}
       </Text>
       {departureSummary ? <Text style={styles.detailText}>{departureSummary}</Text> : null}
-      <Text style={styles.warningText}>
-        Schema watch: using `vehicleMode` with `route.mode` fallback for Epic 2 readiness.
-      </Text>
     </GlassCard>
   );
 }

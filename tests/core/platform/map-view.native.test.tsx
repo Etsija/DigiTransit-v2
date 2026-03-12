@@ -75,6 +75,36 @@ describe('PlatformMapView native', () => {
     );
   });
 
+  it('recentres imperatively again when the recenter request changes without coordinate changes', () => {
+    const { rerender } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        recenterRequestKey={0}
+        showUserLocation
+      />
+    );
+
+    mockAnimateToRegion.mockClear();
+
+    rerender(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        recenterRequestKey={1}
+        showUserLocation
+      />
+    );
+
+    expect(mockAnimateToRegion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        latitude: 60.1699,
+        longitude: 24.9384,
+      }),
+      250
+    );
+  });
+
   it('accepts marker scaffolding without changing the adapter boundary again', () => {
     const onPress = jest.fn();
     const { getAllByLabelText, getByTestId } = render(

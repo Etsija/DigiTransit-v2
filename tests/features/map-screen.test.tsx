@@ -56,6 +56,10 @@ jest.mock('@/features/notifications/hooks/use-home-stop-launch-notification', ()
   useHomeStopLaunchNotification: jest.fn(),
 }));
 
+jest.mock('@/features/map/hooks/use-reverse-geocode', () => ({
+  useReverseGeocode: jest.fn(() => ({ address: undefined })),
+}));
+
 describe('MapScreen', () => {
   const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
   const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
@@ -239,8 +243,34 @@ describe('MapScreen', () => {
     expect(PlatformMapView).toHaveBeenCalled();
     expect(getByTestId('live-map-surface').props.latitude).toBe(60.1699);
     expect(getByTestId('live-map-surface').props.longitude).toBe(24.9384);
+    expect(getByTestId('live-map-surface').props.recenterRequestKey).toBe(0);
     expect(getByTestId('live-map-surface').props.showUserLocation).toBe(true);
     expect(getByTestId('live-map-surface').props.markers).toEqual([]);
+  });
+
+  it('increments the recenter request key when the recenter button is pressed', () => {
+    const screen = render(<MapScreen />);
+
+    expect(screen.getByTestId('live-map-surface').props.recenterRequestKey).toBe(0);
+
+    fireEvent.press(screen.getByTestId('map-recenter-button'));
+
+    expect(screen.getByTestId('live-map-surface').props.recenterRequestKey).toBe(1);
+  });
+
+  it('hides the recenter button until live coordinates are available', () => {
+    useDeviceLocation.mockReturnValue({
+      coordinates: null,
+      permission: { status: 'granted', canAskAgain: true },
+      hasRequestedPermission: true,
+      isFixed: false,
+      isLoading: true,
+      error: null,
+    });
+
+    const screen = render(<MapScreen />);
+
+    expect(screen.queryByTestId('map-recenter-button')).toBeNull();
   });
 
   it('shows an API outage banner while keeping the live map mounted', async () => {

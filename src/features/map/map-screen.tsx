@@ -1,5 +1,6 @@
-import React, { useMemo, useRef } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { GlassView } from 'expo-glass-effect';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getAppErrorMessage } from '@/core/errors/app-error';
@@ -12,10 +13,12 @@ import {
   useDeviceLocation,
 } from '@/features/map/hooks/use-device-location';
 import { createMapStopMarkers } from '@/features/map/hooks/use-map-stop-markers';
+import { useReverseGeocode } from '@/features/map/hooks/use-reverse-geocode';
 import { useHomeStopLaunchNotification } from '@/features/notifications/hooks/use-home-stop-launch-notification';
 import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { ErrorBanner } from '@/shared/components/error-banner';
+import { AppIcon } from '@/shared/icons';
 import { theme } from '@/shared/theme/theme';
 
 type MapScreenProps = {
@@ -49,8 +52,20 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
     isActive,
   });
 
+  const { address: resolvedAddress } = useReverseGeocode(location.coordinates);
+  const [recenterToken, setRecenterToken] = useState(0);
+  const currentCoordinates = location.coordinates;
   const center = location.coordinates ?? HELSINKI_FALLBACK_COORDINATES;
   const showDeniedState = location.permission.status === 'denied';
+  const showRecenterButton =
+    location.permission.status === 'granted' && Boolean(currentCoordinates);
+  const cameraOverride =
+    recenterToken > 0 && currentCoordinates
+      ? { latitude: currentCoordinates.latitude, longitude: currentCoordinates.longitude }
+      : undefined;
+  const handleRecenter = useCallback(() => {
+    setRecenterToken((t) => t + 1);
+  }, []);
   const nearbyStopsQuery = useNearbyStops({
     coordinates: location.coordinates,
     enabled: isActive && Boolean(location.coordinates),
@@ -64,8 +79,7 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
       }),
     [homeStopId, nearbyStopsQuery.data, onSelectStop, searchRadiusMeters]
   );
-  const bottomOverlayInset =
-    insets.bottom + theme.layout.tabBarHeight + theme.spacing.xl + theme.spacing.sm;
+  const bottomOverlayInset = insets.bottom + theme.layout.tabBarHeight;
   const handleMapReady = () => {
     if (hasReportedMapReadyRef.current) {
       return;
@@ -112,10 +126,12 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   return (
     <View style={styles.container}>
       <PlatformMapView
+        camera={cameraOverride}
         latitude={center.latitude}
         longitude={center.longitude}
         markers={markers}
         onMapReady={handleMapReady}
+        recenterRequestKey={recenterToken}
         showUserLocation={location.permission.status === 'granted'}
       />
 
@@ -125,6 +141,7 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
             isFixed={location.isFixed}
             latitude={location.coordinates?.latitude ?? null}
             longitude={location.coordinates?.longitude ?? null}
+            resolvedAddress={resolvedAddress}
           />
 
           {nearbyStopsQuery.isError ? (
@@ -137,6 +154,26 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
               onOpenSettings={() => void Linking.openSettings()}
               onRequestPermission={() => void requestDeviceLocationPermission()}
             />
+          ) : null}
+
+          {showRecenterButton ? (
+            <View pointerEvents='box-none' style={styles.recenterRow}>
+              <Pressable
+                accessibilityLabel='Recenter map on current location'
+                accessibilityRole='button'
+                onPress={handleRecenter}
+                style={({ pressed }) => [
+                  styles.recenterButton,
+                  pressed && styles.recenterButtonPressed,
+                ]}
+                testID='map-recenter-button'
+              >
+                <GlassView glassEffectStyle={theme.glass.glassStyle} style={styles.recenterGlass}>
+                  <View style={styles.recenterOverlay} />
+                  <AppIcon name='locate-outline' size={22} color={theme.colors.text.primary} />
+                </GlassView>
+              </Pressable>
+            </View>
           ) : null}
         </View>
       </SafeAreaView>
@@ -157,5 +194,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: theme.spacing.lg,
     gap: theme.spacing.lg,
+  },
+  recenterRow: {
+    alignItems: 'flex-start',
+  },
+  recenterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radius.card,
+    overflow: 'hidden',
+  },
+  recenterButtonPressed: {
+    opacity: 0.72,
+  },
+  recenterGlass: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radius.card,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: theme.colors.card.border,
+    backgroundColor: theme.colors.card.bg,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recenterOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.card.bg,
   },
 });

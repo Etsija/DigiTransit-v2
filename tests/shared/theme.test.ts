@@ -75,7 +75,7 @@ describe('Design Token System', () => {
     it('defines key layout constants', () => {
       expect(theme.layout.screenPadding).toBe(16);
       expect(theme.layout.coordinatesBarHeight).toBe(44);
-      expect(theme.layout.tabBarHeight).toBe(64);
+      expect(theme.layout.tabBarHeight).toBe(32);
       expect(theme.layout.cardListGap).toBe(12);
       expect(theme.layout.minTouchTarget).toBe(44);
     });
