@@ -188,6 +188,60 @@ describe('notificationPlatformAdapter.native', () => {
     });
   });
 
+  it('schedules a one-shot local notification at an absolute date and returns its identifier', async () => {
+    const setNotificationChannelAsync = jest.fn(async () => {});
+    const setNotificationHandler = jest.fn();
+    const scheduleNotificationAsync = jest.fn(async () => 'scheduled-notification-id');
+    const fireAt = new Date('2026-03-12T10:00:00.000Z');
+
+    jest.doMock('react-native', () => ({
+      Platform: {
+        OS: 'android',
+      },
+    }));
+    jest.doMock('expo-notifications', () => ({
+      IosAuthorizationStatus: {
+        AUTHORIZED: 2,
+        PROVISIONAL: 3,
+        EPHEMERAL: 4,
+      },
+      AndroidImportance: {
+        DEFAULT: 3,
+      },
+      SchedulableTriggerInputTypes: {
+        DATE: 'date',
+      },
+      getPermissionsAsync: jest.fn(),
+      requestPermissionsAsync: jest.fn(),
+      setNotificationHandler,
+      setNotificationChannelAsync,
+      scheduleNotificationAsync,
+    }));
+
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.native');
+
+    await expect(
+      notificationPlatformAdapter.scheduleNotification({
+        title: '550 to Itakeskus departs in 5 min from Kamppi',
+        body: '550 to Itakeskus departs in 5 min from Kamppi',
+        fireAt,
+      })
+    ).resolves.toBe('scheduled-notification-id');
+
+    expect(scheduleNotificationAsync).toHaveBeenCalledWith({
+      content: {
+        title: '550 to Itakeskus departs in 5 min from Kamppi',
+        body: '550 to Itakeskus departs in 5 min from Kamppi',
+      },
+      trigger: {
+        type: 'date',
+        date: fireAt,
+      },
+    });
+  });
+
   it('configures foreground presentation so immediate notifications can be shown while the app is open', async () => {
     const setNotificationChannelAsync = jest.fn(async () => {});
     const setNotificationHandler = jest.fn();
@@ -253,5 +307,19 @@ describe('notificationPlatformAdapter.web', () => {
         body: 'ignored',
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('is a hard no-op for scheduled local notifications on web', async () => {
+    const {
+      notificationPlatformAdapter,
+    } = require('@/core/platform/notifications/notifications.web');
+
+    await expect(
+      notificationPlatformAdapter.scheduleNotification({
+        title: 'ignored',
+        body: 'ignored',
+        fireAt: new Date('2026-03-12T10:00:00.000Z'),
+      })
+    ).resolves.toBeNull();
   });
 });

@@ -2,17 +2,23 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSettingsStore } from '@/core/store/settings.store';
+import { departureReminderLeadTimeOptions } from '@/features/departures/utils/departure-reminders';
 import { theme } from '@/shared/theme/theme';
 
-const notificationLeadTimeOptions = [5, 10, 15];
+type LeadTimeOption = {
+  minutes: number;
+  disabled?: boolean;
+};
 
 type IdleProps = {
   mode: 'idle';
   routeShortName: string;
   departureTime: string;
-  onNotify: () => void;
+  onNotify: (minutes: number) => void;
   onDismiss: () => void;
-  onLeadTimeChange?: (minutes: number) => void;
+  leadTimeOptions?: LeadTimeOption[];
+  initialLeadTimeMinutes?: number;
+  isSubmitting?: boolean;
   onCancel?: never;
 };
 
@@ -33,6 +39,32 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
   const notificationLeadTimeMinutes = useSettingsStore(
     (state) => state.notificationLeadTimeMinutes
   );
+  const leadTimeOptions: LeadTimeOption[] =
+    mode === 'idle'
+      ? (props.leadTimeOptions ?? departureReminderLeadTimeOptions.map((minutes) => ({ minutes })))
+      : [];
+  const largestEnabledLeadTime =
+    [...leadTimeOptions].reverse().find((option) => !option.disabled)?.minutes ?? null;
+  const resolvedInitialLeadTime =
+    mode === 'idle'
+      ? (props.initialLeadTimeMinutes ??
+        (leadTimeOptions.some(
+          (option) => option.minutes === notificationLeadTimeMinutes && !option.disabled
+        )
+          ? notificationLeadTimeMinutes
+          : largestEnabledLeadTime))
+      : null;
+  const [selectedLeadTimeMinutes, setSelectedLeadTimeMinutes] = React.useState<number | null>(
+    resolvedInitialLeadTime
+  );
+  const notifyDisabled =
+    mode === 'idle' && (selectedLeadTimeMinutes === null || props.isSubmitting === true);
+
+  React.useEffect(() => {
+    if (mode === 'idle') {
+      setSelectedLeadTimeMinutes(resolvedInitialLeadTime);
+    }
+  }, [mode, notificationLeadTimeMinutes, resolvedInitialLeadTime]);
 
   return (
     <View style={styles.container}>
@@ -47,23 +79,29 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
             {`Default alert: ${notificationLeadTimeMinutes} min before departure`}
           </Text>
 
-          <View style={styles.optionRow}>
-            {notificationLeadTimeOptions.map((minutes) => {
-              const selected = minutes === notificationLeadTimeMinutes;
+          <View accessibilityRole='radiogroup' style={styles.optionRow}>
+            {leadTimeOptions.map(({ minutes, disabled = false }) => {
+              const selected = minutes === selectedLeadTimeMinutes;
 
               return (
                 <Pressable
                   accessibilityLabel={`${minutes} minutes`}
                   accessibilityRole='radio'
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ disabled, selected }}
+                  disabled={disabled}
                   key={minutes}
-                  onPress={() => props.onLeadTimeChange?.(minutes)}
-                  style={[styles.optionButton, selected ? styles.optionButtonSelected : null]}
+                  onPress={() => setSelectedLeadTimeMinutes(minutes)}
+                  style={[
+                    styles.optionButton,
+                    selected ? styles.optionButtonSelected : null,
+                    disabled ? styles.optionButtonDisabled : null,
+                  ]}
                 >
                   <Text
                     style={[
                       styles.optionButtonText,
                       selected ? styles.optionButtonTextSelected : null,
+                      disabled ? styles.optionButtonTextDisabled : null,
                     ]}
                   >
                     {`${minutes} min`}
@@ -77,8 +115,20 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
 
       <View style={styles.actions}>
         {mode === 'idle' ? (
-          <Pressable onPress={props.onNotify} style={styles.button} accessibilityRole='button'>
-            <Text style={styles.buttonText}>Notify Me</Text>
+          <Pressable
+            accessibilityRole='button'
+            accessibilityState={{ disabled: notifyDisabled }}
+            disabled={notifyDisabled}
+            onPress={() => {
+              if (selectedLeadTimeMinutes !== null) {
+                props.onNotify(selectedLeadTimeMinutes);
+              }
+            }}
+            style={styles.button}
+          >
+            <Text style={styles.buttonText}>
+              {props.isSubmitting ? 'Scheduling...' : 'Notify Me'}
+            </Text>
           </Pressable>
         ) : (
           <Pressable
@@ -152,6 +202,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.status.realtime,
     backgroundColor: `${theme.colors.status.realtime}22`,
   },
+  optionButtonDisabled: {
+    opacity: 0.38,
+  },
   optionButtonText: {
     color: theme.colors.text.primary,
     fontSize: theme.typography.sm.fontSize,
@@ -160,6 +213,9 @@ const styles = StyleSheet.create({
   optionButtonTextSelected: {
     color: theme.colors.status.realtime,
     fontWeight: '700',
+  },
+  optionButtonTextDisabled: {
+    color: theme.colors.text.muted,
   },
   button: {
     backgroundColor: theme.colors.status.realtime,

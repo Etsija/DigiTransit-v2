@@ -4,6 +4,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { getSettingsStore } from '@/core/store/settings.store';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { DepartureCard } from '@/shared/components/departure-card';
 import { DepartureNotificationDialog } from '@/shared/components/departure-notification-dialog';
@@ -294,6 +295,28 @@ describe('Transport & Status UI Components', () => {
       expect(getByText('600')).toBeTruthy();
       expect(getByLabelText('Notification scheduled')).toBeTruthy();
     });
+
+    it('supports long press without changing button semantics', () => {
+      const onLongPress = jest.fn();
+      const { getByRole } = render(
+        <DepartureCard
+          routeShortName='600'
+          headsign='Helsinki Airport'
+          departureTime='14:51'
+          departureEpochSeconds={1_700_000_125}
+          status='realtime'
+          accessibilityLabel='14:51, route 600 to Helsinki Airport, Live GPS'
+          onLongPress={onLongPress}
+        />
+      );
+
+      fireEvent(getByRole('button'), 'longPress');
+
+      expect(onLongPress).toHaveBeenCalledTimes(1);
+      expect(getByRole('button').props.accessibilityLabel).toBe(
+        '14:51, route 600 to Helsinki Airport, Live GPS'
+      );
+    });
   });
 
   describe('MapMarker', () => {
@@ -376,6 +399,87 @@ describe('Transport & Status UI Components', () => {
       expect(getByRole('radio', { name: '10 minutes' }).props.accessibilityState.selected).toBe(
         true
       );
+    });
+
+    it('keeps lead time changes local until confirm and passes the selected value back', () => {
+      const onNotify = jest.fn();
+      const { getByRole } = render(
+        <DepartureNotificationDialog
+          mode='idle'
+          routeShortName='7A'
+          departureTime='14:35'
+          onNotify={onNotify}
+          onDismiss={() => {}}
+        />
+      );
+
+      fireEvent.press(getByRole('radio', { name: '15 minutes' }));
+      fireEvent.press(getByRole('button', { name: 'Notify Me' }));
+
+      expect(getByRole('radio', { name: '10 minutes' }).props.accessibilityState.selected).toBe(
+        false
+      );
+      expect(getByRole('radio', { name: '15 minutes' }).props.accessibilityState.selected).toBe(
+        true
+      );
+      expect(onNotify).toHaveBeenCalledWith(15);
+    });
+
+    it('disables unavailable lead times and prevents confirm when none are selectable', () => {
+      const onNotify = jest.fn();
+      const { getByRole } = render(
+        <DepartureNotificationDialog
+          mode='idle'
+          routeShortName='7A'
+          departureTime='14:35'
+          leadTimeOptions={[
+            { minutes: 5, disabled: true },
+            { minutes: 10, disabled: true },
+            { minutes: 15, disabled: true },
+          ]}
+          onNotify={onNotify}
+          onDismiss={() => {}}
+        />
+      );
+
+      expect(getByRole('radio', { name: '5 minutes' }).props.accessibilityState.disabled).toBe(
+        true
+      );
+      expect(getByRole('button', { name: 'Notify Me' }).props.accessibilityState.disabled).toBe(
+        true
+      );
+
+      fireEvent.press(getByRole('button', { name: 'Notify Me' }));
+
+      expect(onNotify).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the largest enabled lead time when the stored default is unavailable', () => {
+      act(() => {
+        getSettingsStore().getState().updateSettings({ notificationLeadTimeMinutes: 15 });
+      });
+
+      const { getByRole } = render(
+        <DepartureNotificationDialog
+          mode='idle'
+          routeShortName='7A'
+          departureTime='14:35'
+          leadTimeOptions={[{ minutes: 5 }, { minutes: 10 }, { minutes: 15, disabled: true }]}
+          onNotify={() => {}}
+          onDismiss={() => {}}
+        />
+      );
+
+      expect(getByRole('radio', { name: '10 minutes' }).props.accessibilityState.selected).toBe(
+        true
+      );
+      expect(getByRole('radio', { name: '5 minutes' }).props.accessibilityState.selected).toBe(
+        false
+      );
+
+      act(() => {
+        getSettingsStore().getState().updateSettings({ notificationLeadTimeMinutes: 10 });
+      });
     });
 
     it('renders cancel-mode presentation', () => {

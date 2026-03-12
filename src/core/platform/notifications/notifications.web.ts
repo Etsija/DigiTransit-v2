@@ -18,4 +18,10 @@ export const notificationPlatformAdapter: NotificationPlatformAdapter = {
   async prepareRuntime() {},
 
   async sendImmediateNotification() {},
+
+  async scheduleNotification() {
+    return null;
+  },
+
+  async cancelScheduledNotification() {},
 };

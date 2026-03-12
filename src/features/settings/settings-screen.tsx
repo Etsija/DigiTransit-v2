@@ -323,7 +323,7 @@ function NotificationLeadTimeRow(props: {
           <View style={styles.leadTimeTextGroup}>
             <ThemedText type='smallBold'>Notification lead time</ThemedText>
             <ThemedText themeColor='textSecondary' style={styles.helperText}>
-              Default lead time used when departure reminders are scheduled later in the app.
+              Default lead time used when departure reminders are scheduled.
             </ThemedText>
           </View>
 
