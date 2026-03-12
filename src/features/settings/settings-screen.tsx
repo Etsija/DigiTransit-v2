@@ -190,8 +190,8 @@ function HomeStopRow(props: {
     : `Home stop, ${HOME_STOP_EMPTY_STATE}`;
 
   return (
-    <View accessibilityLabel='Home stop' style={styles.row}>
-      <View style={styles.readOnlyRowHeader}>
+    <View accessibilityLabel='Home stop' className='gap-1 border-b py-2' style={styles.row}>
+      <View className='min-h-11 flex-row items-center justify-between gap-3'>
         <ThemedText type='smallBold'>Home stop</ThemedText>
         {hasHomeStop ? (
           <Pressable
@@ -199,6 +199,7 @@ function HomeStopRow(props: {
             accessibilityRole='button'
             hitSlop={8}
             onPress={props.onClear}
+            className='min-h-11 min-w-11 items-center justify-center px-3'
             style={({ pressed }) => [
               styles.inlineActionButton,
               pressed && styles.inlineActionPressed,
@@ -210,8 +211,13 @@ function HomeStopRow(props: {
       </View>
 
       {hasHomeStop ? (
-        <View accessibilityLabel={homeStopSummaryLabel} accessible style={styles.homeStopCard}>
-          <View style={styles.homeStopPrimaryRow}>
+        <View
+          accessibilityLabel={homeStopSummaryLabel}
+          accessible
+          className='gap-1 rounded-xl border p-3'
+          style={styles.homeStopCard}
+        >
+          <View className='flex-row items-center gap-2'>
             <View
               style={[
                 styles.transportBadge,
@@ -235,8 +241,8 @@ function HomeStopRow(props: {
               )}
             </View>
 
-            <View style={styles.homeStopTextGroup}>
-              <View style={styles.homeStopNameRow}>
+            <View className='flex-1 gap-1'>
+              <View className='flex-row items-center gap-2'>
                 <ThemedText>{props.homeStop?.name}</ThemedText>
                 <View
                   accessibilityLabel='Home stop pinned'
@@ -257,7 +263,12 @@ function HomeStopRow(props: {
           </ThemedText>
         </View>
       ) : (
-        <View accessibilityLabel={homeStopSummaryLabel} accessible style={styles.homeStopCard}>
+        <View
+          accessibilityLabel={homeStopSummaryLabel}
+          accessible
+          className='gap-1 rounded-xl border p-3'
+          style={styles.homeStopCard}
+        >
           <ThemedText>{HOME_STOP_EMPTY_STATE}</ThemedText>
         </View>
       )}
@@ -272,9 +283,9 @@ function NotificationSwitchRow(props: {
   onValueChange: (nextValue: boolean) => void;
 }) {
   return (
-    <View style={styles.row}>
-      <View style={styles.switchRow}>
-        <View style={styles.switchLabelGroup}>
+    <View className='gap-1 border-b py-2' style={styles.row}>
+      <View className='min-h-11 flex-row items-center justify-between gap-3'>
+        <View className='flex-1 gap-1'>
           <ThemedText type='smallBold'>Push notifications</ThemedText>
           <ThemedText themeColor='textSecondary' style={styles.helperText}>
             {props.helper}
@@ -306,28 +317,31 @@ function NotificationLeadTimeRow(props: {
   const options = getNotificationLeadTimeOptions(props.selectedLeadTimeMinutes);
 
   return (
-    <View style={[styles.row, props.disabled ? styles.disabledRow : null]}>
+    <View
+      className='gap-1 border-b py-2'
+      style={[styles.row, props.disabled ? styles.disabledRow : null]}
+    >
       <Pressable
         accessibilityLabel='Notification lead time'
         accessibilityRole='button'
         accessibilityState={{ disabled: props.disabled, expanded: props.expanded }}
         disabled={props.disabled}
         onPress={props.onPress}
+        className='min-h-11 justify-center'
         style={({ pressed }) => [
-          styles.leadTimeButton,
           props.disabled ? styles.disabledRow : null,
           pressed && !props.disabled ? styles.utilityActionPressed : null,
         ]}
       >
-        <View style={styles.leadTimeHeader}>
-          <View style={styles.leadTimeTextGroup}>
+        <View className='flex-row items-center justify-between gap-3'>
+          <View className='flex-1 gap-1'>
             <ThemedText type='smallBold'>Notification lead time</ThemedText>
             <ThemedText themeColor='textSecondary' style={styles.helperText}>
               Default lead time used when departure reminders are scheduled.
             </ThemedText>
           </View>
 
-          <View style={styles.leadTimeValueGroup}>
+          <View className='flex-row items-center gap-1'>
             <ThemedText>{`${props.selectedLeadTimeMinutes} minutes`}</ThemedText>
             <AppIcon
               color={theme.colors.text.secondary}
@@ -339,7 +353,7 @@ function NotificationLeadTimeRow(props: {
       </Pressable>
 
       {props.expanded ? (
-        <View style={styles.leadTimeOptions}>
+        <View className='flex-row flex-wrap gap-2 pt-1'>
           {options.map((option) => {
             const selected = option === props.selectedLeadTimeMinutes;
 
@@ -379,7 +393,7 @@ function EditableRow(props: {
   const bounds = settingsNumericBounds[props.field];
 
   return (
-    <View style={styles.row}>
+    <View className='gap-1 border-b py-2' style={styles.row}>
       <ThemedText type='smallBold'>{meta.label}</ThemedText>
       <ThemedText themeColor='textSecondary' style={styles.helperText}>
         {meta.helper}
@@ -665,12 +679,12 @@ export function SettingsScreenContent() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView className='w-full flex-1'>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
           keyboardShouldPersistTaps='handled'
         >
-          <View style={styles.mainSection}>
+          <View className='gap-3'>
             <ThemedText type='subtitle'>Settings</ThemedText>
             <ThemedText themeColor='textSecondary'>
               Tune the polling cadence and search radius here. Home stop and notification actions
@@ -707,14 +721,18 @@ export function SettingsScreenContent() {
             />
           </View>
 
-          <View accessibilityLabel='Utilities section' style={styles.utilitySection}>
+          <View accessibilityLabel='Utilities section' className='gap-3 pb-6'>
             <ThemedText type='subtitle'>Utilities</ThemedText>
 
-            <View accessibilityLabel='Build diagnostics card' style={styles.utilityCard}>
-              <View style={styles.utilityActionContent}>
-                <View style={styles.utilityActionLeading}>
+            <View
+              accessibilityLabel='Build diagnostics card'
+              className='min-h-11 gap-1 rounded-xl border p-3'
+              style={styles.utilityCard}
+            >
+              <View className='min-h-11 flex-row items-center justify-between gap-3'>
+                <View className='flex-1 flex-row items-center gap-3'>
                   <AppIcon color={theme.colors.text.primary} name='construct-outline' size={18} />
-                  <View style={styles.utilityActionTextGroup}>
+                  <View className='flex-1 gap-1'>
                     <ThemedText type='smallBold'>Build diagnostics</ThemedText>
                     <ThemedText themeColor='textSecondary' style={styles.utilityActionHelper}>
                       Environment details for the current build
@@ -723,7 +741,7 @@ export function SettingsScreenContent() {
                 </View>
               </View>
 
-              <View style={styles.utilityDetails}>
+              <View className='gap-1 border-t pt-1' style={styles.utilityDetails}>
                 <ThemedText themeColor='textSecondary'>
                   DigiTransit URL: {DIGITRANSIT_API_URL}
                 </ThemedText>
@@ -740,15 +758,16 @@ export function SettingsScreenContent() {
               accessibilityLabel='Open Showcase'
               accessibilityRole='button'
               onPress={handleOpenShowcase}
+              className='min-h-11 rounded-xl border px-3 py-2'
               style={({ pressed }) => [
                 styles.utilityAction,
                 pressed && styles.utilityActionPressed,
               ]}
             >
-              <View style={styles.utilityActionContent}>
-                <View style={styles.utilityActionLeading}>
+              <View className='min-h-11 flex-row items-center justify-between gap-3'>
+                <View className='flex-1 flex-row items-center gap-3'>
                   <AppIcon color={theme.colors.text.primary} name='albums-outline' size={18} />
-                  <View style={styles.utilityActionTextGroup}>
+                  <View className='flex-1 gap-1'>
                     <ThemedText type='smallBold'>Showcase</ThemedText>
                     <ThemedText themeColor='textSecondary' style={styles.utilityActionHelper}>
                       Open the component preview screen
@@ -759,15 +778,19 @@ export function SettingsScreenContent() {
               </View>
             </Pressable>
 
-            <View accessibilityLabel={`App version ${appVersion}`} style={styles.utilityCard}>
-              <View style={styles.utilityActionContent}>
-                <View style={styles.utilityActionLeading}>
+            <View
+              accessibilityLabel={`App version ${appVersion}`}
+              className='min-h-11 rounded-xl border p-3'
+              style={styles.utilityCard}
+            >
+              <View className='min-h-11 flex-row items-center justify-between gap-3'>
+                <View className='flex-1 flex-row items-center gap-3'>
                   <AppIcon
                     color={theme.colors.text.primary}
                     name='information-circle-outline'
                     size={18}
                   />
-                  <View style={styles.utilityActionTextGroup}>
+                  <View className='flex-1 gap-1'>
                     <ThemedText type='smallBold'>App version</ThemedText>
                     <ThemedText themeColor='textSecondary' style={styles.utilityActionHelper}>
                       Version {appVersion}
@@ -781,6 +804,7 @@ export function SettingsScreenContent() {
 
         <View
           accessibilityLabel='Settings actions'
+          className='gap-2 border-t px-4 pt-3'
           style={[styles.stickyFooter, { paddingBottom: theme.spacing.md + footerBottomInset }]}
         >
           <ThemedText themeColor='textSecondary' style={styles.footerStatusText}>
@@ -797,6 +821,7 @@ export function SettingsScreenContent() {
             accessibilityState={{ disabled: saveDisabled }}
             disabled={saveDisabled}
             onPress={handleSave}
+            className='min-h-11 items-center justify-center rounded-xl px-3'
             style={({ pressed }) => [
               styles.primaryButton,
               saveDisabled && styles.disabledButton,
@@ -828,16 +853,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     gap: theme.spacing.xl,
   },
-  mainSection: {
-    gap: theme.spacing.md,
-  },
-  utilitySection: {
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
-  },
   row: {
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
     borderBottomWidth: theme.borderWidth.subtle,
     borderBottomColor: theme.colors.card.border,
   },
@@ -845,55 +861,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   homeStopCard: {
-    gap: theme.spacing.xs,
     borderRadius: theme.radius.bar,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
     backgroundColor: theme.colors.card.bg,
-    padding: theme.spacing.md,
-  },
-  readOnlyRowHeader: {
-    minHeight: theme.layout.minTouchTarget,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
-  },
-  switchRow: {
-    minHeight: theme.layout.minTouchTarget,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
-  },
-  switchLabelGroup: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-  leadTimeButton: {
-    minHeight: theme.layout.minTouchTarget,
-    justifyContent: 'center',
-  },
-  leadTimeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
-  },
-  leadTimeTextGroup: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-  leadTimeValueGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  leadTimeOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    paddingTop: theme.spacing.xs,
   },
   leadTimeOption: {
     minHeight: theme.layout.minTouchTarget,
@@ -918,26 +889,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  homeStopPrimaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
   transportBadge: {
     width: theme.glass.iconBadgeSize,
     height: theme.glass.iconBadgeSize,
     borderRadius: theme.glass.iconBadgeRadius,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  homeStopTextGroup: {
-    flex: 1,
-    gap: theme.spacing.xs,
-  },
-  homeStopNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
   },
   homePinnedBadge: {
     width: 22,
@@ -952,10 +909,7 @@ const styles = StyleSheet.create({
   inlineActionButton: {
     minHeight: theme.layout.minTouchTarget,
     minWidth: theme.layout.minTouchTarget,
-    paddingHorizontal: theme.spacing.md,
     borderRadius: theme.radius.bar,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: 'rgba(248, 113, 113, 0.14)',
     borderWidth: theme.borderWidth.subtle,
     borderColor: 'rgba(248, 113, 113, 0.32)',
@@ -993,12 +947,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   primaryButton: {
-    minHeight: theme.layout.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderRadius: theme.radius.bar,
     backgroundColor: theme.colors.link.primary,
-    paddingHorizontal: theme.spacing.md,
     borderWidth: theme.borderWidth.subtle,
     borderColor: 'rgba(255, 255, 255, 0.18)',
   },
@@ -1018,9 +968,6 @@ const styles = StyleSheet.create({
     borderTopWidth: theme.borderWidth.subtle,
     borderTopColor: theme.colors.card.border,
     backgroundColor: 'rgba(9, 11, 16, 0.96)',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    gap: theme.spacing.sm,
   },
   footerStatusText: {
     fontSize: theme.typography.sm.fontSize,
@@ -1031,8 +978,6 @@ const styles = StyleSheet.create({
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
     backgroundColor: theme.colors.card.bg,
-    padding: theme.spacing.md,
-    gap: theme.spacing.xs,
   },
   utilityAction: {
     minHeight: theme.layout.minTouchTarget,
@@ -1040,35 +985,14 @@ const styles = StyleSheet.create({
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
     backgroundColor: theme.colors.card.bg,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
   },
   utilityActionPressed: {
     opacity: 0.8,
-  },
-  utilityActionContent: {
-    minHeight: theme.layout.minTouchTarget,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
-  },
-  utilityActionLeading: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  utilityActionTextGroup: {
-    flex: 1,
-    gap: theme.spacing.xs,
   },
   utilityActionHelper: {
     fontSize: theme.typography.sm.fontSize,
   },
   utilityDetails: {
-    gap: theme.spacing.xs,
-    paddingTop: theme.spacing.xs,
     borderTopWidth: theme.borderWidth.subtle,
     borderTopColor: theme.colors.card.border,
   },

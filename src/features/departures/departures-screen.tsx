@@ -263,7 +263,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
   }
 
   return (
-    <View style={styles.container}>
+    <View className='flex-1' style={styles.container}>
       <Image
         source={require('../../../assets/images/map-backdrop.png')}
         blurRadius={1}
@@ -275,8 +275,8 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
       <View style={styles.backdropScrim} />
       <View style={styles.backdropTint} />
 
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
+      <SafeAreaView className='flex-1'>
+        <View className='flex-1 gap-4 p-4'>
           <CoordinatesBar
             isFixed
             latitude={coordinates?.latitude ?? null}
@@ -293,18 +293,19 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
             showsVerticalScrollIndicator={false}
             testID='departures-scroll-view'
           >
-            <View style={styles.panelHeader}>
+            <View className='flex-row items-center gap-3'>
               <Pressable
                 accessibilityLabel='Back'
                 accessibilityRole='button'
                 onPress={onBack}
+                className='min-h-11 min-w-11 flex-row items-center gap-1'
                 style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
               >
                 <AppIcon name='chevron-back' size={18} color={theme.colors.text.primary} />
                 <Text style={styles.backButtonLabel}>Back</Text>
               </Pressable>
 
-              <View style={styles.headerCopy}>
+              <View className='flex-1 gap-1'>
                 <Text style={styles.title}>Departures</Text>
                 <Text style={styles.subtitle}>Selected stop identity stays pinned at the top.</Text>
               </View>
@@ -323,7 +324,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
                 {header.patternLabels.length > 0 ? (
                   <View style={styles.patternsSection}>
                     <Pressable
-                      className='py-4'
+                      className='h-16 w-full flex-row items-center justify-center px-4'
                       accessibilityRole='button'
                       accessibilityLabel={`Patterns via this stop (${header.patternLabels.length})`}
                       hitSlop={8}
@@ -336,7 +337,10 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
                       <Text style={styles.patternsToggleLabel}>
                         {`Patterns via this stop (${header.patternLabels.length})`}
                       </Text>
-                      <View pointerEvents='none' style={styles.patternsToggleIcon}>
+                      <View
+                        pointerEvents='none'
+                        className='absolute bottom-0 right-4 top-0 items-center justify-center'
+                      >
                         <AppIcon
                           name={showPatterns ? 'chevron-up' : 'chevron-down'}
                           size={18}
@@ -346,7 +350,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
                     </Pressable>
 
                     {showPatterns ? (
-                      <View style={styles.patternsList}>
+                      <View className='gap-1 px-4 pb-4'>
                         {header.patternLabels.map((patternLabel) => (
                           <Text key={patternLabel} style={styles.patternText}>
                             {patternLabel}
@@ -364,7 +368,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
             ) : null}
 
             {hasCachedDepartures ? (
-              <View style={styles.departuresSection}>
+              <View className='gap-2'>
                 <View
                   pointerEvents='none'
                   style={styles.refreshIndicatorSlot}
@@ -377,7 +381,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
                   ) : null}
                 </View>
 
-                <View style={styles.departuresList}>
+                <View className='gap-3'>
                   {departures.map((departure) => (
                     <DepartureCard
                       key={`${departure.serviceDay}-${departure.routeShortName}-${departure.headsign}-${departure.displayDepartureEpochSeconds}`}
@@ -434,7 +438,10 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
               onPress={() => setSelectedReminderDialog(null)}
               style={styles.dialogBackdrop}
             />
-            <View style={[styles.dialogSheet, { paddingBottom: dialogBottomInset }]}>
+            <View
+              className='px-4'
+              style={[styles.dialogSheet, { paddingBottom: dialogBottomInset }]}
+            >
               {selectedReminderDialog.mode === 'idle' ? (
                 <DepartureNotificationDialog
                   mode='idle'
@@ -483,11 +490,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
-  },
   panel: {
     flex: 1,
     borderRadius: theme.radius.card,
@@ -500,17 +502,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     gap: theme.spacing.lg,
     flexGrow: 1,
-  },
-  panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  departuresList: {
-    gap: theme.layout.cardListGap,
-  },
-  departuresSection: {
-    gap: theme.spacing.sm,
   },
   refreshIndicatorSlot: {
     minHeight: 28,
@@ -533,13 +524,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   patternsToggle: {
-    width: '100%',
     position: 'relative',
-    height: 64,
-    paddingHorizontal: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   patternsTogglePressed: {
     opacity: 0.72,
@@ -552,35 +537,17 @@ const styles = StyleSheet.create({
     paddingLeft: theme.spacing.lg,
     paddingRight: theme.spacing.xl,
   },
-  patternsToggleIcon: {
-    position: 'absolute',
-    right: theme.spacing.lg,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  patternsList: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.xs,
-  },
   patternText: {
     color: theme.colors.text.secondary,
     fontSize: theme.typography.sm.fontSize,
     fontWeight: theme.typography.sm.fontWeight,
   },
   backButton: {
-    minWidth: theme.layout.minTouchTarget,
-    minHeight: theme.layout.minTouchTarget,
     borderRadius: theme.radius.bar,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     paddingHorizontal: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
   },
   backButtonPressed: {
     opacity: 0.72,
@@ -589,10 +556,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontSize: theme.typography.sm.fontSize,
     fontWeight: '600',
-  },
-  headerCopy: {
-    flex: 1,
-    gap: theme.spacing.xs,
   },
   title: {
     color: theme.colors.text.primary,
@@ -614,7 +577,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.42)',
   },
   dialogSheet: {
-    paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
   },
 });

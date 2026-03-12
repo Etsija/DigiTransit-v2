@@ -74,7 +74,7 @@ development_status:
   5-1-on-launch-home-stop-notification: done
   5-2-per-departure-notification-scheduling: done
   5-3-departure-notification-cancellation: done
-  5-4-ui-styling-consistency-cleanup-with-nativewind: backlog
+  5-4-ui-styling-consistency-cleanup-with-nativewind: done
   epic-5-retrospective: optional
 
   epic-6: backlog

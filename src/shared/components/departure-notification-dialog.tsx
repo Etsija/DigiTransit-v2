@@ -68,19 +68,19 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
   }, [mode, notificationLeadTimeMinutes, resolvedInitialLeadTime]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View className='gap-4' style={styles.container}>
+      <View className='flex-row items-center justify-between'>
         <Text style={styles.routeText}>{routeShortName}</Text>
         <Text style={styles.timeText}>{departureTime}</Text>
       </View>
 
       {mode === 'idle' ? (
-        <View style={styles.preferenceSection}>
+        <View className='gap-2'>
           <Text style={styles.preferenceText}>
             {`Default alert: ${notificationLeadTimeMinutes} min before departure`}
           </Text>
 
-          <View accessibilityRole='radiogroup' style={styles.optionRow}>
+          <View accessibilityRole='radiogroup' className='flex-row flex-wrap gap-2'>
             {leadTimeOptions.map(({ minutes, disabled = false }) => {
               const selected = minutes === selectedLeadTimeMinutes;
 
@@ -116,7 +116,7 @@ export function DepartureNotificationDialog(props: DepartureNotificationDialogPr
         <Text style={styles.preferenceText}>Cancel notification for this departure?</Text>
       )}
 
-      <View style={styles.actions}>
+      <View className='gap-2'>
         {mode === 'idle' ? (
           <Pressable
             accessibilityRole='button'
@@ -163,12 +163,6 @@ const styles = StyleSheet.create({
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
     padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   routeText: {
     color: theme.colors.text.primary,
@@ -180,31 +174,20 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.xl.fontSize,
     fontWeight: theme.typography.xl.fontWeight,
   },
-  actions: {
-    gap: theme.spacing.sm,
-  },
   preferenceText: {
     color: theme.colors.text.secondary,
     fontSize: theme.typography.sm.fontSize,
   },
-  preferenceSection: {
-    gap: theme.spacing.sm,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
   optionButton: {
     minHeight: theme.layout.minTouchTarget,
     minWidth: theme.layout.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.bar,
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   optionButtonSelected: {
     borderColor: theme.colors.status.realtime,

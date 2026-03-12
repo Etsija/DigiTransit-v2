@@ -10,7 +10,7 @@ export type EmptyStateProps = {
 
 export function EmptyState({ title, message }: EmptyStateProps) {
   return (
-    <View style={styles.container}>
+    <View className='flex-1 items-center justify-center gap-2 p-8'>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
     </View>
@@ -18,13 +18,6 @@ export function EmptyState({ title, message }: EmptyStateProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    padding: theme.spacing.xl,
-  },
   title: {
     color: theme.colors.text.primary,
     fontSize: theme.typography.lg.fontSize,

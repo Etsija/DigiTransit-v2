@@ -9,7 +9,7 @@ export type LoadingStateProps = {
 
 export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   return (
-    <View style={styles.container}>
+    <View className='flex-1 items-center justify-center gap-6 p-8'>
       <ActivityIndicator size='large' color={theme.colors.text.secondary} />
       <Text style={styles.text}>{message}</Text>
     </View>
@@ -17,13 +17,6 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: theme.spacing.lg,
-    padding: theme.spacing.xl,
-  },
   text: {
     color: theme.colors.text.secondary,
     fontSize: theme.typography.base.fontSize,

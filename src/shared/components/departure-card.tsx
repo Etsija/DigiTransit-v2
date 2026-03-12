@@ -65,21 +65,22 @@ export function DepartureCard({
     `${departureTime}, route ${routeShortName} to ${headsign}, ${statusLabel}`;
   const content = (
     <View
+      className='min-h-11 flex-row items-center gap-2'
       style={[styles.container, { borderLeftColor: borderColor }]}
       testID='departure-card-surface'
     >
-      <View style={styles.routeContainer}>
+      <View className='min-w-10'>
         <Text style={styles.routeText}>{routeShortName}</Text>
       </View>
 
-      <View style={styles.infoContainer}>
+      <View className='flex-1 gap-1'>
         <Text style={styles.headsignText}>{headsign}</Text>
         <Text style={[styles.statusLabel, { color: borderColor }]}>
           {isRealtime ? '● Live GPS' : '~ Scheduled'}
         </Text>
       </View>
 
-      <View style={styles.timeContainer}>
+      <View className='flex-row items-center gap-2'>
         {notificationScheduled ? (
           <View
             accessibilityLabel='Notification scheduled'
@@ -90,7 +91,7 @@ export function DepartureCard({
           </View>
         ) : null}
 
-        <View style={styles.timeCopy}>
+        <View className='items-end gap-1'>
           <Text style={[styles.timeText, isRealtime && styles.timeTextBold]}>{departureTime}</Text>
           <Text style={styles.timeToDepartureText}>{timeToDeparture}</Text>
         </View>
@@ -127,22 +128,11 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.card.border,
     borderLeftWidth: theme.borderWidth.statusAccent,
     padding: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    minHeight: theme.layout.minTouchTarget,
-  },
-  routeContainer: {
-    minWidth: 40,
   },
   routeText: {
     color: theme.colors.text.primary,
     fontSize: theme.typography.sm.fontSize,
     fontWeight: '600',
-  },
-  infoContainer: {
-    flex: 1,
-    gap: theme.spacing.xs,
   },
   headsignText: {
     color: theme.colors.text.primary,
@@ -152,15 +142,6 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: theme.typography.xs.fontSize,
     fontWeight: theme.typography.xs.fontWeight,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  timeCopy: {
-    alignItems: 'flex-end',
-    gap: theme.spacing.xs,
   },
   notificationBadge: {
     width: 24,

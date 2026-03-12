@@ -29,12 +29,12 @@ export function CoordinatesBar({
       <View style={styles.overlayTop} />
       <View style={styles.overlayBottom} />
 
-      <View style={styles.content}>
+      <View className='flex-row items-center gap-3'>
         <View style={[styles.indicatorShell, { borderColor: `${indicatorColor}55` }]}>
           <View style={[styles.indicatorDot, { backgroundColor: indicatorColor }]} />
         </View>
 
-        <View style={styles.copy}>
+        <View className='flex-1'>
           <Text style={styles.primaryText}>{primaryLabel}</Text>
           {coordinateLabel ? <Text style={styles.secondaryText}>{coordinateLabel}</Text> : null}
         </View>
@@ -69,11 +69,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card.gradientBottom,
     opacity: 0.42,
   },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
   indicatorShell: {
     width: 20,
     height: 20,
@@ -87,10 +82,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: theme.radius.pill,
-  },
-  copy: {
-    flex: 1,
-    gap: 2,
   },
   primaryText: {
     color: theme.colors.text.primary,
