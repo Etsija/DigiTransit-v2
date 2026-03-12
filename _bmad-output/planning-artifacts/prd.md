@@ -107,7 +107,7 @@ Targeting web in addition to iOS and Android makes the app accessible without an
 1. **Map tab** — GPS-centred map, nearby stops as colour-coded markers (by transport type), marker size proportional to proximity, explorable (pan/zoom)
 2. **Stops tab** — List of nearby stops sorted by distance, showing stop name, code, type, zone, patterns, and next stops
 3. **Departures tab** — Per-stop next departures with scheduled vs. realtime indication, headsign, colour-coded departure cards (yellow = estimate, green = realtime GPS)
-4. **Settings tab** — Seven configurable values: search radius, location update interval, stops polling interval, departures polling interval, home stop, push notifications toggle, notification lead time
+4. **Settings tab** — Core configurable controls: search radius, location update interval, stops polling interval, departures polling interval, home stop, push notifications master toggle, home-stop launch notification toggle, notification lead time
 5. **Home stop pin** — User designates one stop as home stop from the Stops tab
 6. **Push notifications** — Local notifications when next home stop departure is within configured lead time
 7. **Error handling** — API unavailable: map renders, error message shown; GPS unavailable: prompt for permission
@@ -198,13 +198,13 @@ Targeting web in addition to iOS and Android makes the app accessible without an
 
 **Rising action:** The stops list loads sorted by distance. The nearest entry is "Eerikinkatu" — 90m away, tram icon, green zone. He long-presses the row. A context menu appears: *"Pin as home stop."* He taps it. A pin icon appears next to the stop name confirming it's set.
 
-He taps the Settings tab. He sees seven rows. He taps "Search radius" and changes it from 250m to 150m — enough to see stops he can realistically walk to, but not ones two blocks over that would never be his choice. He taps "Push notifications" — it's off. He taps it to toggle on. The OS permission prompt appears; he grants it. The toggle turns blue.
+He taps the Settings tab. He sees the full set of controls. He taps "Search radius" and changes it from 250m to 150m — enough to see stops he can realistically walk to, but not ones two blocks over that would never be his choice. He taps "Push notifications" — it's off. He taps it to toggle on. The OS permission prompt appears; he grants it. The toggle turns blue.
 
 **Climax:** He taps "Notification lead time" and sets it to 8 minutes — his walk to the tram stop takes 7. He leaves Settings. The next morning, when he opens the app, a notification fires immediately: *"Next tram from Eerikinkatu: route 6 at 08:04 — in 9 minutes."* He didn't navigate to anything.
 
 **Resolution:** Two minutes of configuration, zero daily effort. The app now works the way he thinks — his stop, his radius, his lead time.
 
-*Capabilities revealed: Long-press stop → pin as home stop, home stop display in Settings, home stop clearing, push notifications toggle (with OS permission prompt), notification lead time configuration, search radius configuration, settings persistence across sessions.*
+*Capabilities revealed: Long-press stop → pin as home stop, home stop display in Settings, home stop clearing, push notifications master toggle (with OS permission prompt), dedicated home-stop launch notification toggle, notification lead time configuration, search radius configuration, settings persistence across sessions.*
 
 ---
 
@@ -325,8 +325,9 @@ From the Departures view:
 6. Long-pressing an already-scheduled departure card shows a cancel option
 
 **Settings additions:**
-- Push notifications toggle (on/off) — controls Pattern 1 home stop notifications
-- Notification lead time (minutes, e.g. 5 / 10 / 15) — default for Pattern 2 dialog
+- Push notifications master toggle (on/off) — enables or disables notification capability overall
+- Home-stop launch notification toggle (on/off) — controls Pattern 1 separately when notifications are enabled
+- Notification lead time (minutes, e.g. 5 / 10 / 15 / 30) — default for Pattern 2 dialog
 - Home stop display (name of pinned stop, with option to clear)
 
 **Platform notes:**
