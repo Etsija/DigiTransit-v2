@@ -4,6 +4,10 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
 import { StopsScreen } from '@/features/stops/stops-screen';
+import {
+  __resetNearbyStopsSourceTestState,
+  getNearbyStopsSourceStore,
+} from '@/features/stops/store/nearby-stops-source.store';
 import { theme } from '@/shared/theme/theme';
 
 jest.mock('react-native-safe-area-context', () => {
@@ -60,6 +64,10 @@ jest.mock('@/core/store/settings.store', () => ({
   useSettingsStore: jest.fn(),
 }));
 
+jest.mock('@/features/map/hooks/use-reverse-geocode', () => ({
+  useReverseGeocode: jest.fn(() => ({ address: undefined })),
+}));
+
 describe('StopsScreen', () => {
   const onStopPress = jest.fn();
   let settingsState: {
@@ -84,6 +92,9 @@ describe('StopsScreen', () => {
   };
 
   beforeEach(() => {
+    act(() => {
+      __resetNearbyStopsSourceTestState();
+    });
     settingsState = {
       locationUpdateIntervalSeconds: 20,
       searchRadiusMeters: 250,
@@ -155,6 +166,9 @@ describe('StopsScreen', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    act(() => {
+      __resetNearbyStopsSourceTestState();
+    });
   });
 
   it('renders nearby stops sorted with a static backdrop and full metadata', async () => {
@@ -498,5 +512,46 @@ describe('StopsScreen', () => {
       homeStop: null,
     });
     expect(screen.queryByLabelText('Home stop pinned')).toBeNull();
+  });
+
+  it('uses the shared detached query target instead of live location when detached mode is active', async () => {
+    getNearbyStopsSourceStore().getState().startDetached({
+      latitude: 60.175,
+      longitude: 24.945,
+    });
+    getNearbyStopsSourceStore().getState().setDetachedCenter({
+      latitude: 60.176,
+      longitude: 24.946,
+    });
+    getNearbyStopsSourceStore().getState().confirmDetachedQuery();
+
+    const screen = render(<StopsScreen isActive onStopPress={onStopPress} />);
+
+    await waitFor(() => {
+      expect(useNearbyStops).toHaveBeenLastCalledWith({
+        coordinates: { latitude: 60.176, longitude: 24.946 },
+        enabled: true,
+      });
+      expect(screen.getByText('Map center')).toBeTruthy();
+      expect(screen.getByText('60.176°N, 24.946°E')).toBeTruthy();
+    });
+  });
+
+  it('does not query nearby stops while detached until the map selection is confirmed', async () => {
+    getNearbyStopsSourceStore().getState().startDetached({
+      latitude: 60.175,
+      longitude: 24.945,
+    });
+
+    const screen = render(<StopsScreen isActive onStopPress={onStopPress} />);
+
+    await waitFor(() => {
+      expect(useNearbyStops).toHaveBeenLastCalledWith({
+        coordinates: null,
+        enabled: false,
+      });
+      expect(screen.getByText('Map center')).toBeTruthy();
+      expect(screen.getByText('60.175°N, 24.945°E')).toBeTruthy();
+    });
   });
 });

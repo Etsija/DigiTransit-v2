@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { getMapboxPublicToken } from '@/core/config/env';
 import { MapMarker } from '@/shared/components/map-marker';
 import { theme } from '@/shared/theme/theme';
-import type { PlatformMapMarker, PlatformMapViewProps } from './types';
+import type { PlatformMapCoordinates, PlatformMapMarker, PlatformMapViewProps } from './types';
 
 export const MAPBOX_DARK_STYLE_URL = 'mapbox://styles/mapbox/dark-v11';
 
@@ -91,14 +91,85 @@ export function syncMapboxMarkers(map: mapboxgl.Map, markers: PlatformMapMarker[
   };
 }
 
+export function syncLiveLocationMarker(
+  map: mapboxgl.Map,
+  coordinates: PlatformMapCoordinates | null,
+  showUserLocation: boolean
+) {
+  if (!showUserLocation || !coordinates || typeof document === 'undefined') {
+    return undefined;
+  }
+
+  const element = document.createElement('div');
+  element.setAttribute('aria-label', 'Current live location');
+  element.style.width = '18px';
+  element.style.height = '18px';
+  element.style.borderRadius = '999px';
+  element.style.background = 'rgba(74, 222, 128, 0.18)';
+  element.style.border = '1px solid rgba(74, 222, 128, 0.45)';
+  element.style.display = 'flex';
+  element.style.alignItems = 'center';
+  element.style.justifyContent = 'center';
+
+  const core = document.createElement('div');
+  core.style.width = '10px';
+  core.style.height = '10px';
+  core.style.borderRadius = '999px';
+  core.style.background = theme.colors.status.realtime;
+  element.appendChild(core);
+
+  const marker = new mapboxgl.Marker({ element })
+    .setLngLat([coordinates.longitude, coordinates.latitude])
+    .addTo(map);
+
+  return () => {
+    marker.remove();
+  };
+}
+
+export function bindMapboxUserCenterChanges(
+  map: mapboxgl.Map,
+  interactionRef: React.MutableRefObject<boolean>,
+  onUserInteractionStart?: () => void,
+  onUserCenterChange?: (coordinates: PlatformMapCoordinates) => void
+) {
+  const handleDragStart = () => {
+    interactionRef.current = true;
+    onUserInteractionStart?.();
+  };
+
+  const handleDragEnd = () => {
+    const center = map.getCenter();
+    interactionRef.current = false;
+    onUserCenterChange?.({
+      latitude: center.lat,
+      longitude: center.lng,
+    });
+  };
+
+  map.on('dragstart', handleDragStart);
+  map.on('dragend', handleDragEnd);
+
+  return () => {
+    map.off('dragstart', handleDragStart);
+    map.off('dragend', handleDragEnd);
+  };
+}
+
 export function PlatformMapView({
   latitude,
+  liveLocationCoordinates = null,
   longitude,
   markers = [],
+  mode = 'live',
   onMapReady,
+  onUserInteractionStart,
+  onUserCenterChange,
+  showUserLocation,
 }: PlatformMapViewProps) {
   const mapContainerRef = useRef<unknown>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const isUserInteractingRef = useRef(false);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const mapboxToken = getMapboxPublicToken();
 
@@ -136,6 +207,10 @@ export function PlatformMapView({
   }, [latitude, longitude, mapboxToken, onMapReady]);
 
   useEffect(() => {
+    if (isUserInteractingRef.current) {
+      return;
+    }
+
     mapInstanceRef.current?.setCenter([longitude, latitude]);
   }, [latitude, longitude]);
 
@@ -146,6 +221,27 @@ export function PlatformMapView({
 
     return syncMapboxMarkers(mapInstance, markers);
   }, [mapInstance, markers]);
+
+  useEffect(() => {
+    if (!mapInstance) {
+      return;
+    }
+
+    return bindMapboxUserCenterChanges(
+      mapInstance,
+      isUserInteractingRef,
+      onUserInteractionStart,
+      onUserCenterChange
+    );
+  }, [mapInstance, onUserCenterChange, onUserInteractionStart]);
+
+  useEffect(() => {
+    if (!mapInstance) {
+      return;
+    }
+
+    return syncLiveLocationMarker(mapInstance, liveLocationCoordinates, showUserLocation);
+  }, [liveLocationCoordinates, mapInstance, showUserLocation]);
 
   if (!mapboxToken) {
     return (
@@ -158,13 +254,48 @@ export function PlatformMapView({
     );
   }
 
-  return <View ref={mapContainerRef as never} style={styles.map} testID='live-map-surface' />;
+  return (
+    <View style={styles.container}>
+      <View ref={mapContainerRef as never} style={styles.map} testID='live-map-surface' />
+      {mode === 'detached' ? (
+        <View pointerEvents='none' style={styles.centerTarget} testID='map-detached-center-marker'>
+          <View style={styles.centerTargetOuter}>
+            <View style={styles.centerTargetInner} />
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   map: {
     flex: 1,
     backgroundColor: '#08121D',
+  },
+  centerTarget: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerTargetOuter: {
+    width: 26,
+    height: 26,
+    borderRadius: theme.radius.pill,
+    borderWidth: 2,
+    borderColor: theme.colors.link.primary,
+    backgroundColor: '#00000033',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerTargetInner: {
+    width: 10,
+    height: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.link.primary,
   },
   fallback: {
     flex: 1,

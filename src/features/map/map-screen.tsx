@@ -1,10 +1,11 @@
 import { GlassView } from 'expo-glass-effect';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getAppErrorMessage } from '@/core/errors/app-error';
 import { PlatformMapView } from '@/core/platform/maps/map-view';
+import type { PlatformMapCoordinates } from '@/core/platform/maps/types';
 import { useSettingsStore } from '@/core/store/settings.store';
 import { LocationDeniedState } from '@/features/map/components/location-denied-state';
 import { HELSINKI_FALLBACK_COORDINATES } from '@/features/map/constants';
@@ -16,6 +17,7 @@ import { createMapStopMarkers } from '@/features/map/hooks/use-map-stop-markers'
 import { useReverseGeocode } from '@/features/map/hooks/use-reverse-geocode';
 import { useHomeStopLaunchNotification } from '@/features/notifications/hooks/use-home-stop-launch-notification';
 import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
+import { useNearbyStopsSourceStore } from '@/features/stops/store/nearby-stops-source.store';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { ErrorBanner } from '@/shared/components/error-banner';
 import { AppIcon } from '@/shared/icons';
@@ -27,6 +29,7 @@ type MapScreenProps = {
 };
 
 const MAP_LOAD_BUDGET_MS = 3000;
+const DETACHED_MODE_DISTANCE_METERS = 40;
 
 function getNow() {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -34,6 +37,22 @@ function getNow() {
   }
 
   return Date.now();
+}
+
+function haversineDistanceMeters(a: PlatformMapCoordinates, b: PlatformMapCoordinates) {
+  const earthRadius = 6_371_000;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const sinLat = Math.sin(dLat / 2);
+  const sinLon = Math.sin(dLon / 2);
+  const h =
+    sinLat * sinLat +
+    Math.cos((a.latitude * Math.PI) / 180) *
+      Math.cos((b.latitude * Math.PI) / 180) *
+      sinLon *
+      sinLon;
+
+  return earthRadius * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
@@ -52,23 +71,85 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
     isActive,
   });
 
-  const { address: resolvedAddress } = useReverseGeocode(location.coordinates);
   const [recenterToken, setRecenterToken] = useState(0);
-  const currentCoordinates = location.coordinates;
-  const center = location.coordinates ?? HELSINKI_FALLBACK_COORDINATES;
+  const [activeCameraRequestKey, setActiveCameraRequestKey] = useState<number | null>(null);
+  const [cameraOverrideCoordinates, setCameraOverrideCoordinates] =
+    useState<PlatformMapCoordinates | null>(null);
+  const isDetached = useNearbyStopsSourceStore((state) => state.mode === 'detached');
+  const detachedCenter = useNearbyStopsSourceStore((state) => state.detachedCenter);
+  const detachedQueryCoordinates = useNearbyStopsSourceStore(
+    (state) => state.detachedQueryCoordinates
+  );
+  const startDetached = useNearbyStopsSourceStore((state) => state.startDetached);
+  const setDetachedCenter = useNearbyStopsSourceStore((state) => state.setDetachedCenter);
+  const confirmDetachedQuery = useNearbyStopsSourceStore((state) => state.confirmDetachedQuery);
+  const returnToLive = useNearbyStopsSourceStore((state) => state.returnToLive);
+  const liveCoordinates = location.coordinates;
+  const activeCenterCoordinates =
+    isDetached && detachedCenter ? detachedCenter : (liveCoordinates ?? null);
+  const { address: resolvedAddress } = useReverseGeocode(activeCenterCoordinates);
+  const center =
+    isDetached && detachedCenter
+      ? detachedCenter
+      : (liveCoordinates ?? HELSINKI_FALLBACK_COORDINATES);
   const showDeniedState = location.permission.status === 'denied';
-  const showRecenterButton =
-    location.permission.status === 'granted' && Boolean(currentCoordinates);
+  const showRecenterButton = location.permission.status === 'granted' && Boolean(liveCoordinates);
+  const showDetachedQueryButton = isDetached && Boolean(detachedCenter);
   const cameraOverride =
-    recenterToken > 0 && currentCoordinates
-      ? { latitude: currentCoordinates.latitude, longitude: currentCoordinates.longitude }
+    activeCameraRequestKey === recenterToken && cameraOverrideCoordinates
+      ? {
+          latitude: cameraOverrideCoordinates.latitude,
+          longitude: cameraOverrideCoordinates.longitude,
+          latitudeDelta: 0.025,
+          longitudeDelta: 0.025,
+        }
       : undefined;
   const handleRecenter = useCallback(() => {
-    setRecenterToken((t) => t + 1);
-  }, []);
+    if (!liveCoordinates) {
+      return;
+    }
+
+    returnToLive();
+    setCameraOverrideCoordinates(liveCoordinates);
+    setRecenterToken((token) => {
+      const nextToken = token + 1;
+      setActiveCameraRequestKey(nextToken);
+      return nextToken;
+    });
+  }, [liveCoordinates, returnToLive]);
+  const handleUserInteractionStart = useCallback(() => {
+    if (isDetached || !liveCoordinates) {
+      return;
+    }
+
+    startDetached(liveCoordinates);
+  }, [isDetached, liveCoordinates, startDetached]);
+  const handleUserCenterChange = useCallback(
+    (nextCenter: PlatformMapCoordinates) => {
+      if (!liveCoordinates) {
+        return;
+      }
+
+      const distanceFromLive = haversineDistanceMeters(liveCoordinates, nextCenter);
+
+      if (distanceFromLive < DETACHED_MODE_DISTANCE_METERS) {
+        if (isDetached) {
+          setDetachedCenter(nextCenter);
+        }
+        return;
+      }
+
+      setDetachedCenter(nextCenter);
+    },
+    [isDetached, liveCoordinates]
+  );
+  const handleDetachedQuery = useCallback(() => {
+    confirmDetachedQuery();
+  }, [confirmDetachedQuery]);
   const nearbyStopsQuery = useNearbyStops({
-    coordinates: location.coordinates,
-    enabled: isActive && Boolean(location.coordinates),
+    coordinates: isDetached ? detachedQueryCoordinates : liveCoordinates,
+    enabled:
+      isActive && (isDetached ? Boolean(detachedQueryCoordinates) : Boolean(liveCoordinates)),
   });
   const markers = useMemo(
     () =>
@@ -100,6 +181,13 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   };
 
   React.useEffect(() => {
+    if (activeCameraRequestKey !== null) {
+      setActiveCameraRequestKey(null);
+      setCameraOverrideCoordinates(null);
+    }
+  }, [activeCameraRequestKey]);
+
+  React.useEffect(() => {
     if (
       location.permission.status === 'granted' ||
       (!location.permission.canAskAgain && location.hasRequestedPermission)
@@ -128,9 +216,13 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
       <PlatformMapView
         camera={cameraOverride}
         latitude={center.latitude}
+        liveLocationCoordinates={liveCoordinates}
         longitude={center.longitude}
         markers={markers}
+        mode={isDetached ? 'detached' : 'live'}
         onMapReady={handleMapReady}
+        onUserInteractionStart={handleUserInteractionStart}
+        onUserCenterChange={handleUserCenterChange}
         recenterRequestKey={recenterToken}
         showUserLocation={location.permission.status === 'granted'}
       />
@@ -138,10 +230,10 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
       <SafeAreaView pointerEvents='box-none' style={styles.safeArea}>
         <View style={[styles.overlay, { paddingBottom: bottomOverlayInset }]}>
           <CoordinatesBar
-            isFixed={location.isFixed}
-            latitude={location.coordinates?.latitude ?? null}
-            longitude={location.coordinates?.longitude ?? null}
-            resolvedAddress={resolvedAddress}
+            isFixed={isDetached ? false : location.isFixed}
+            latitude={activeCenterCoordinates?.latitude ?? null}
+            longitude={activeCenterCoordinates?.longitude ?? null}
+            resolvedAddress={resolvedAddress ?? (isDetached ? 'Map center' : undefined)}
           />
 
           {nearbyStopsQuery.isError ? (
@@ -158,6 +250,23 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
 
           {showRecenterButton ? (
             <View pointerEvents='box-none' style={styles.recenterRow}>
+              {showDetachedQueryButton ? (
+                <Pressable
+                  accessibilityLabel='Query nearby stops at map center'
+                  accessibilityRole='button'
+                  onPress={handleDetachedQuery}
+                  style={({ pressed }) => [
+                    styles.queryButton,
+                    pressed && styles.recenterButtonPressed,
+                  ]}
+                  testID='map-query-here-button'
+                >
+                  <GlassView glassEffectStyle={theme.glass.glassStyle} style={styles.queryGlass}>
+                    <View style={styles.recenterOverlay} />
+                    <Text style={styles.queryButtonText}>Query here</Text>
+                  </GlassView>
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityLabel='Recenter map on current location'
                 accessibilityRole='button'
@@ -197,6 +306,8 @@ const styles = StyleSheet.create({
   },
   recenterRow: {
     alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
   },
   recenterButton: {
     width: 48,
@@ -221,5 +332,28 @@ const styles = StyleSheet.create({
   recenterOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.card.bg,
+  },
+  queryButton: {
+    height: 48,
+    minWidth: theme.layout.minTouchTarget * 2,
+    borderRadius: theme.radius.card,
+    overflow: 'hidden',
+  },
+  queryGlass: {
+    minWidth: theme.layout.minTouchTarget * 2,
+    height: 48,
+    borderRadius: theme.radius.card,
+    borderWidth: theme.borderWidth.subtle,
+    borderColor: `${theme.colors.status.realtime}55`,
+    backgroundColor: theme.colors.card.bg,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  queryButtonText: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: '600',
   },
 });
