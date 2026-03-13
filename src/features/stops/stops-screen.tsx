@@ -18,6 +18,7 @@ import {
   formatZoneLabel,
 } from '@/features/stops/components/nearby-stop-formatters';
 import { useNearbyStops } from '@/features/stops/hooks/use-nearby-stops';
+import { useNearbyStopsSourceStore } from '@/features/stops/store/nearby-stops-source.store';
 import { CoordinatesBar } from '@/shared/components/coordinates-bar';
 import { EmptyState } from '@/shared/components/empty-state';
 import { LoadingState } from '@/shared/components/loading-state';
@@ -48,10 +49,19 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
     intervalSeconds: locationUpdateIntervalSeconds,
     isActive,
   });
-  const { address: resolvedAddress } = useReverseGeocode(location.coordinates);
+  const isDetached = useNearbyStopsSourceStore((state) => state.mode === 'detached');
+  const detachedCenter = useNearbyStopsSourceStore((state) => state.detachedCenter);
+  const detachedQueryCoordinates = useNearbyStopsSourceStore(
+    (state) => state.detachedQueryCoordinates
+  );
+  const activeDisplayCoordinates = isDetached
+    ? (detachedQueryCoordinates ?? detachedCenter)
+    : location.coordinates;
+  const activeQueryCoordinates = isDetached ? detachedQueryCoordinates : location.coordinates;
+  const { address: resolvedAddress } = useReverseGeocode(activeDisplayCoordinates);
   const nearbyStopsQuery = useNearbyStops({
-    coordinates: location.coordinates,
-    enabled: isActive && Boolean(location.coordinates),
+    coordinates: activeQueryCoordinates,
+    enabled: isActive && Boolean(activeQueryCoordinates),
   });
 
   const stops = nearbyStopsQuery.data ?? [];
@@ -112,10 +122,10 @@ export function StopsScreen({ isActive = true, onStopPress }: StopsScreenProps) 
       <SafeAreaView className='flex-1'>
         <View className='flex-1 gap-4 p-4' style={{ paddingBottom: bottomContentInset }}>
           <CoordinatesBar
-            isFixed={location.isFixed}
-            latitude={location.coordinates?.latitude ?? null}
-            longitude={location.coordinates?.longitude ?? null}
-            resolvedAddress={resolvedAddress}
+            isFixed={isDetached ? false : location.isFixed}
+            latitude={activeDisplayCoordinates?.latitude ?? null}
+            longitude={activeDisplayCoordinates?.longitude ?? null}
+            resolvedAddress={resolvedAddress ?? (isDetached ? 'Map center' : undefined)}
           />
 
           <View style={styles.panel}>

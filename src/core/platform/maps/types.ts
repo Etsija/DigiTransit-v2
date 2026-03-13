@@ -1,5 +1,10 @@
 import type { TransportMode } from '@/shared/theme/theme';
 
+export type PlatformMapCoordinates = {
+  latitude: number;
+  longitude: number;
+};
+
 export type PlatformMapCamera = {
   latitude: number;
   longitude: number;
@@ -24,7 +29,11 @@ export type PlatformMapViewProps = {
   longitude: number;
   showUserLocation: boolean;
   camera?: PlatformMapCamera;
+  liveLocationCoordinates?: PlatformMapCoordinates | null;
+  mode?: 'live' | 'detached';
   recenterRequestKey?: number;
   markers?: PlatformMapMarker[];
   onMapReady?: () => void;
+  onUserInteractionStart?: () => void;
+  onUserCenterChange?: (coordinates: PlatformMapCoordinates) => void;
 };

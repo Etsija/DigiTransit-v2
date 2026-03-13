@@ -4,12 +4,20 @@ import { render } from '@testing-library/react-native';
 import React from 'react';
 
 import {
+  bindMapboxUserCenterChanges,
   buildMapboxOptions,
   PlatformMapView,
+  syncLiveLocationMarker,
   syncMapboxMarkers,
 } from '@/core/platform/maps/map-view.web';
 
+const mockMapOn = jest.fn();
+const mockMapOff = jest.fn();
+const mockMapGetCenter = jest.fn(() => ({ lat: 60.175, lng: 24.945 }));
 const mockCreateMap = jest.fn((_options?: unknown) => ({
+  getCenter: mockMapGetCenter,
+  off: mockMapOff,
+  on: mockMapOn,
   once: jest.fn((_event: string, callback: () => void) => callback()),
   remove: jest.fn(),
   setCenter: jest.fn(),
@@ -52,9 +60,13 @@ describe('PlatformMapView web', () => {
     mockSetLngLat.mockClear();
     mockRemoveMarker.mockClear();
     mockCreateRoot.mockClear();
+    mockMapOn.mockClear();
+    mockMapOff.mockClear();
+    mockMapGetCenter.mockClear();
     delete process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN;
     global.document = {
       createElement: jest.fn(() => ({
+        appendChild: jest.fn(),
         setAttribute: jest.fn(),
         style: {},
       })),
@@ -140,5 +152,67 @@ describe('PlatformMapView web', () => {
 
     expect(mockRemoveMarker).toHaveBeenCalledTimes(1);
     expect(mockCreateRoot.mock.results[0]?.value.unmount).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders and cleans up a live location marker through the shared adapter contract', () => {
+    const cleanup = syncLiveLocationMarker(
+      {} as never,
+      { latitude: 60.1699, longitude: 24.9384 },
+      true
+    );
+
+    expect(mockSetLngLat).toHaveBeenCalledWith([24.9384, 60.1699]);
+    expect(mockAddTo).toHaveBeenCalledTimes(1);
+
+    cleanup?.();
+
+    expect(mockRemoveMarker).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a detached center overlay', () => {
+    process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN = 'pk.test-token';
+
+    const { getByTestId } = render(
+      <PlatformMapView latitude={60.1699} longitude={24.9384} mode='detached' showUserLocation />
+    );
+
+    expect(getByTestId('map-detached-center-marker')).toBeTruthy();
+  });
+
+  it('binds drag-driven center changes through the shared callback contract', () => {
+    const interactionRef = { current: false };
+    const onUserInteractionStart = jest.fn();
+    const onUserCenterChange = jest.fn();
+
+    const cleanup = bindMapboxUserCenterChanges(
+      {
+        getCenter: mockMapGetCenter,
+        off: mockMapOff,
+        on: mockMapOn,
+      } as never,
+      interactionRef as never,
+      onUserInteractionStart,
+      onUserCenterChange
+    );
+
+    expect(mockMapOn).toHaveBeenCalledWith('dragstart', expect.any(Function));
+    expect(mockMapOn).toHaveBeenCalledWith('dragend', expect.any(Function));
+
+    const startHandler = mockMapOn.mock.calls.find(([event]) => event === 'dragstart')?.[1];
+    const handler = mockMapOn.mock.calls.find(([event]) => event === 'dragend')?.[1];
+    startHandler();
+    handler();
+
+    expect(interactionRef.current).toBe(false);
+    expect(onUserInteractionStart).toHaveBeenCalledTimes(1);
+    expect(onUserCenterChange).toHaveBeenCalledWith({
+      latitude: 60.175,
+      longitude: 24.945,
+    });
+
+    cleanup();
+
+    expect(mockMapOff).toHaveBeenCalledWith('dragstart', startHandler);
+    expect(mockMapOff).toHaveBeenCalledWith('dragend', handler);
   });
 });
