@@ -141,7 +141,7 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
 
       setDetachedCenter(nextCenter);
     },
-    [isDetached, liveCoordinates]
+    [isDetached, liveCoordinates, setDetachedCenter]
   );
   const handleDetachedQuery = useCallback(() => {
     confirmDetachedQuery();

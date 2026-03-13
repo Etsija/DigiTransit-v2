@@ -1,37 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import MapView, {
-  Marker,
-  PROVIDER_GOOGLE,
-  type MapStyleElement,
-  type Region,
-} from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
 import { getIosGoogleMapsApiKey } from '@/core/config/env';
 import { MAP_REGION_DELTA } from '@/features/map/constants';
 import { MapMarker } from '@/shared/components/map-marker';
+import { nativeDarkMapStyle } from '@/shared/theme/map-theme';
 import { theme } from '@/shared/theme/theme';
 import type { PlatformMapViewProps } from './types';
-
-const DARK_MAP_STYLE: MapStyleElement[] = [
-  { elementType: 'geometry', stylers: [{ color: '#0b1220' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ea3b7' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0b1220' }] },
-  {
-    featureType: 'administrative',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1f2937' }],
-  },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#111827' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0a1a17' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#172033' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#111827' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1d4d5b' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#143844' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#162132' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#07111f' }] },
-];
 
 function buildRegion(
   latitude: number,
@@ -122,7 +98,7 @@ export function PlatformMapView({
   return (
     <View style={styles.container}>
       <MapView
-        customMapStyle={DARK_MAP_STYLE}
+        customMapStyle={nativeDarkMapStyle}
         initialRegion={initialRegion}
         onMapReady={onMapReady}
         onPanDrag={() => {
@@ -195,7 +171,7 @@ export function PlatformMapView({
   );
 }
 
-export { DARK_MAP_STYLE };
+export { nativeDarkMapStyle as DARK_MAP_STYLE };
 
 const styles = StyleSheet.create({
   container: {

@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 
+import { darkMapPalette, nativeDarkMapStyle, oklchToHex } from '@/shared/theme/map-theme';
 import { theme } from '@/shared/theme/theme';
 
 describe('Design Token System', () => {
@@ -86,6 +87,33 @@ describe('Design Token System', () => {
       const modes = Object.keys(theme.colors.transport);
       expect(modes).toEqual(expect.arrayContaining(['bus', 'tram', 'train', 'metro', 'ferry']));
       expect(modes).toHaveLength(5);
+    });
+  });
+
+  describe('map theme tokens', () => {
+    it('derives provider-safe hex colors from OKLCH map tokens', () => {
+      expect(oklchToHex(darkMapPalette.base)).toMatch(/^#[0-9A-F]{6}$/);
+      expect(oklchToHex(darkMapPalette.labelPrimary)).toMatch(/^#[0-9A-F]{6}$/);
+    });
+
+    it('builds the native dark style from the semantic map palette', () => {
+      const baseColor = nativeDarkMapStyle[0]?.stylers?.[0] as { color?: string } | undefined;
+      const labelColor = nativeDarkMapStyle[1]?.stylers?.[0] as { color?: string } | undefined;
+
+      expect(baseColor?.color).toBe(oklchToHex(darkMapPalette.base));
+      expect(labelColor?.color).toBe(oklchToHex(darkMapPalette.labelPrimary));
+    });
+
+    it('includes rail styling layers', () => {
+      expect(nativeDarkMapStyle).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            featureType: 'transit.line',
+            elementType: 'geometry',
+            stylers: [{ color: oklchToHex(darkMapPalette.railway) }],
+          }),
+        ])
+      );
     });
   });
 });
