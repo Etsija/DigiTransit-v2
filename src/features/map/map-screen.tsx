@@ -250,6 +250,21 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
 
           {showRecenterButton ? (
             <View pointerEvents='box-none' style={styles.recenterRow}>
+              <Pressable
+                accessibilityLabel='Recenter map on current location'
+                accessibilityRole='button'
+                onPress={handleRecenter}
+                style={({ pressed }) => [
+                  styles.recenterButton,
+                  pressed && styles.recenterButtonPressed,
+                ]}
+                testID='map-recenter-button'
+              >
+                <GlassView glassEffectStyle={theme.glass.glassStyle} style={styles.recenterGlass}>
+                  <View style={styles.recenterOverlay} />
+                  <AppIcon name='locate-outline' size={22} color={theme.colors.text.primary} />
+                </GlassView>
+              </Pressable>
               {showDetachedQueryButton ? (
                 <Pressable
                   accessibilityLabel='Query nearby stops at map center'
@@ -267,21 +282,6 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
                   </GlassView>
                 </Pressable>
               ) : null}
-              <Pressable
-                accessibilityLabel='Recenter map on current location'
-                accessibilityRole='button'
-                onPress={handleRecenter}
-                style={({ pressed }) => [
-                  styles.recenterButton,
-                  pressed && styles.recenterButtonPressed,
-                ]}
-                testID='map-recenter-button'
-              >
-                <GlassView glassEffectStyle={theme.glass.glassStyle} style={styles.recenterGlass}>
-                  <View style={styles.recenterOverlay} />
-                  <AppIcon name='locate-outline' size={22} color={theme.colors.text.primary} />
-                </GlassView>
-              </Pressable>
             </View>
           ) : null}
         </View>
