@@ -24,6 +24,7 @@ query StopDeparturesQuery($id: String!) {
       serviceDay
       headsign
       trip {
+        gtfsId
         route {
           shortName
         }

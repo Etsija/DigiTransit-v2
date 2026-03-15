@@ -16,6 +16,10 @@ import { notificationPlatformAdapter } from '@/core/platform/notifications';
 import { useDepartureReminderStore } from '@/core/store/departure-reminders.store';
 import { DeparturesSkeleton } from '@/features/departures/components/departures-skeleton';
 import {
+  useDepartureProgress,
+  type DepartureProgressIdentity,
+} from '@/features/departures/hooks/use-departure-progress';
+import {
   useStopDepartures,
   type StopDeparture,
 } from '@/features/departures/hooks/use-stop-departures';
@@ -33,10 +37,12 @@ import { DepartureNotificationDialog } from '@/shared/components/departure-notif
 import { EmptyState } from '@/shared/components/empty-state';
 import { ErrorBanner } from '@/shared/components/error-banner';
 import { StopHeaderCard } from '@/shared/components/stop-header-card';
+import { StopProgressRow } from '@/shared/components/stop-progress-row';
 import { AppIcon } from '@/shared/icons';
 import { theme } from '@/shared/theme/theme';
 
 const DEPARTURES_RENDER_BUDGET_MS = 2000;
+const EMPTY_DEPARTURES: StopDeparture[] = [];
 
 type DeparturesScreenProps = {
   stopId: string;
@@ -80,6 +86,19 @@ type SelectedReminderDialogState = {
   notificationId: string | null;
 };
 
+function resolveExpandedDepartureKey(stopId: string, departure: StopDeparture) {
+  return `${stopId}::${departure.tripId}::${departure.serviceDay}::${departure.scheduledDeparture}`;
+}
+
+function resolveDepartureProgressIdentity(departure: StopDeparture): DepartureProgressIdentity {
+  return {
+    tripId: departure.tripId,
+    serviceDate: departure.serviceDate,
+    serviceDay: departure.serviceDay,
+    scheduledDeparture: departure.scheduledDeparture,
+  };
+}
+
 export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScreenProps) {
   const { address: resolvedAddress } = useReverseGeocode(coordinates);
   const renderStartedAtRef = useRef(getNow());
@@ -88,6 +107,7 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
   const cancelingReminderKeyRef = useRef<string | null>(null);
   const insets = useSafeAreaInsets();
   const [showPatterns, setShowPatterns] = useState(false);
+  const [expandedDepartureKey, setExpandedDepartureKey] = useState<string | null>(null);
   const [selectedReminderDialog, setSelectedReminderDialog] =
     useState<SelectedReminderDialogState | null>(null);
   const [isSchedulingReminder, setIsSchedulingReminder] = useState(false);
@@ -95,12 +115,21 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
   const remindersByKey = useDepartureReminderStore((state) => state.remindersByKey);
   const hasHydratedReminders = useDepartureReminderStore((state) => state.hasHydrated);
   const header = departuresQuery.data?.header ?? null;
-  const departures = departuresQuery.data?.departures ?? [];
+  const departures = departuresQuery.data?.departures ?? EMPTY_DEPARTURES;
   const setReminder = useDepartureReminderStore((state) => state.setReminder);
   const removeReminder = useDepartureReminderStore((state) => state.removeReminder);
   const pruneExpiredReminders = useDepartureReminderStore((state) => state.pruneExpiredReminders);
   const reminderBookingSupported = Platform.OS !== 'web';
   const hasCachedDepartures = Boolean(header) && departures.length > 0;
+  const expandedDeparture =
+    departures.find(
+      (departure) => resolveExpandedDepartureKey(stopId, departure) === expandedDepartureKey
+    ) ?? null;
+  const expandedDepartureProgressQuery = useDepartureProgress({
+    stopId,
+    departure: expandedDeparture ? resolveDepartureProgressIdentity(expandedDeparture) : null,
+    enabled: expandedDeparture !== null,
+  });
   const showInitialLoader = !header && departuresQuery.isPending;
   const showErrorBanner = departuresQuery.isError;
   const showInitialErrorBanner = showErrorBanner && !hasCachedDepartures;
@@ -131,11 +160,26 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
 
   React.useEffect(() => {
     setShowPatterns(false);
+    setExpandedDepartureKey(null);
     setSelectedReminderDialog(null);
     schedulingReminderKeyRef.current = null;
     cancelingReminderKeyRef.current = null;
     setIsSchedulingReminder(false);
   }, [stopId]);
+
+  React.useEffect(() => {
+    if (!expandedDepartureKey) {
+      return;
+    }
+
+    const hasExpandedDeparture = departures.some(
+      (departure) => resolveExpandedDepartureKey(stopId, departure) === expandedDepartureKey
+    );
+
+    if (!hasExpandedDeparture) {
+      setExpandedDepartureKey(null);
+    }
+  }, [departures, expandedDepartureKey, stopId]);
 
   React.useEffect(() => {
     if (hasHydratedReminders) {
@@ -386,33 +430,82 @@ export function DeparturesScreen({ stopId, onBack, coordinates }: DeparturesScre
 
                 <View className='gap-3'>
                   {departures.map((departure) => (
-                    <DepartureCard
-                      key={`${departure.serviceDay}-${departure.routeShortName}-${departure.headsign}-${departure.displayDepartureEpochSeconds}`}
-                      routeShortName={departure.routeShortName}
-                      headsign={departure.headsign}
-                      departureTime={departure.displayTime}
-                      departureEpochSeconds={departure.displayDepartureEpochSeconds}
-                      status={departure.status}
-                      accessibilityLabel={departure.accessibilityLabel}
-                      notificationScheduled={Boolean(
-                        remindersByKey[resolveReminderKey(stopId, departure)]
-                      )}
-                      onLongPress={
-                        reminderBookingSupported
-                          ? () => {
-                              const reminderKey = resolveReminderKey(stopId, departure);
-                              const reminder = remindersByKey[reminderKey] ?? null;
+                    <View
+                      key={resolveExpandedDepartureKey(stopId, departure)}
+                      style={styles.departureCardGroup}
+                    >
+                      <DepartureCard
+                        routeShortName={departure.routeShortName}
+                        headsign={departure.headsign}
+                        departureTime={departure.displayTime}
+                        departureEpochSeconds={departure.displayDepartureEpochSeconds}
+                        status={departure.status}
+                        expanded={
+                          resolveExpandedDepartureKey(stopId, departure) === expandedDepartureKey
+                        }
+                        accessibilityLabel={departure.accessibilityLabel}
+                        notificationScheduled={Boolean(
+                          remindersByKey[resolveReminderKey(stopId, departure)]
+                        )}
+                        onPress={() => {
+                          const nextKey = resolveExpandedDepartureKey(stopId, departure);
 
-                              setSelectedReminderDialog({
-                                departure,
-                                mode: reminder ? 'cancel' : 'idle',
-                                reminderKey,
-                                notificationId: reminder?.notificationId ?? null,
-                              });
-                            }
-                          : undefined
-                      }
-                    />
+                          setExpandedDepartureKey((current) =>
+                            current === nextKey ? null : nextKey
+                          );
+                        }}
+                        onLongPress={
+                          reminderBookingSupported
+                            ? () => {
+                                const reminderKey = resolveReminderKey(stopId, departure);
+                                const reminder = remindersByKey[reminderKey] ?? null;
+
+                                setSelectedReminderDialog({
+                                  departure,
+                                  mode: reminder ? 'cancel' : 'idle',
+                                  reminderKey,
+                                  notificationId: reminder?.notificationId ?? null,
+                                });
+                              }
+                            : undefined
+                        }
+                      />
+
+                      {resolveExpandedDepartureKey(stopId, departure) === expandedDepartureKey ? (
+                        <View style={styles.expandedPanel} testID='departure-progress-panel'>
+                          {expandedDepartureProgressQuery.isPending ? (
+                            <View style={styles.expandedLoadingState}>
+                              <ActivityIndicator
+                                color={theme.colors.text.secondary}
+                                size='small'
+                                testID='departure-progress-loading'
+                              />
+                            </View>
+                          ) : null}
+
+                          {!expandedDepartureProgressQuery.isPending &&
+                          expandedDepartureProgressQuery.data?.length ? (
+                            <View style={styles.expandedRows}>
+                              {expandedDepartureProgressQuery.data.map((row) => (
+                                <StopProgressRow
+                                  key={`${row.stopGtfsId}-${row.stopPositionInPattern}`}
+                                  stopCode={row.stopCode}
+                                  stopName={row.stopName}
+                                  state={row.state}
+                                />
+                              ))}
+                            </View>
+                          ) : null}
+
+                          {!expandedDepartureProgressQuery.isPending &&
+                          !expandedDepartureProgressQuery.data?.length ? (
+                            <Text style={styles.expandedFallbackText}>
+                              Stop progress unavailable right now.
+                            </Text>
+                          ) : null}
+                        </View>
+                      ) : null}
+                    </View>
                   ))}
                 </View>
               </View>
@@ -518,6 +611,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(12, 14, 19, 0.7)',
     borderWidth: theme.borderWidth.subtle,
     borderColor: theme.colors.card.border,
+  },
+  departureCardGroup: {
+    gap: theme.spacing.sm,
+  },
+  expandedPanel: {
+    marginLeft: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  expandedRows: {
+    gap: theme.spacing.xs,
+  },
+  expandedLoadingState: {
+    minHeight: 32,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingHorizontal: theme.spacing.md,
+  },
+  expandedFallbackText: {
+    color: theme.colors.text.secondary,
+    fontSize: theme.typography.sm.fontSize,
+    fontWeight: theme.typography.sm.fontWeight,
+    paddingHorizontal: theme.spacing.md,
   },
   patternsSection: {
     borderRadius: theme.radius.card,

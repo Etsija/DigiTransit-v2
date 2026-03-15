@@ -115,6 +115,7 @@ describe('useStopDepartures', () => {
               serviceDay: 1_700_000_000,
               headsign: 'Munkkiniemi',
               trip: {
+                gtfsId: 'HSL:trip-4-live',
                 route: {
                   shortName: '4',
                 },
@@ -128,6 +129,7 @@ describe('useStopDepartures', () => {
               serviceDay: 1_700_000_000,
               headsign: 'Pasila',
               trip: {
+                gtfsId: 'HSL:trip-7B-scheduled',
                 route: {
                   shortName: '7B',
                 },
@@ -141,6 +143,7 @@ describe('useStopDepartures', () => {
               serviceDay: 1_700_000_000,
               headsign: 'Pasila',
               trip: {
+                gtfsId: 'HSL:trip-4-scheduled',
                 route: {
                   shortName: '4',
                 },
@@ -160,11 +163,13 @@ describe('useStopDepartures', () => {
       },
       departures: [
         {
+          tripId: 'HSL:trip-4-live',
           scheduledDeparture: 120,
           realtimeDeparture: 125,
           realtime: true,
           realtimeState: 'UPDATED',
           serviceDay: 1_700_000_000,
+          serviceDate: '20231115',
           headsign: 'Munkkiniemi',
           routeShortName: '4',
           displayDepartureEpochSeconds: 1_700_000_125,
@@ -174,11 +179,13 @@ describe('useStopDepartures', () => {
           accessibilityLabel: `${realtimeTime}, route 4 to Munkkiniemi, Live GPS`,
         },
         {
+          tripId: 'HSL:trip-7B-scheduled',
           scheduledDeparture: 180,
           realtimeDeparture: 180,
           realtime: false,
           realtimeState: 'SCHEDULED',
           serviceDay: 1_700_000_000,
+          serviceDate: '20231115',
           headsign: 'Pasila',
           routeShortName: '7B',
           displayDepartureEpochSeconds: 1_700_000_180,
@@ -188,11 +195,13 @@ describe('useStopDepartures', () => {
           accessibilityLabel: `${firstScheduledTime}, route 7B to Pasila, Scheduled`,
         },
         {
+          tripId: 'HSL:trip-4-scheduled',
           scheduledDeparture: 240,
           realtimeDeparture: 240,
           realtime: false,
           realtimeState: 'SCHEDULED',
           serviceDay: 1_700_000_000,
+          serviceDate: '20231115',
           headsign: 'Pasila',
           routeShortName: '4',
           displayDepartureEpochSeconds: 1_700_000_240,
@@ -226,6 +235,7 @@ describe('useStopDepartures', () => {
             serviceDay: 1_700_000_000,
             headsign: 'Munkkiniemi',
             trip: {
+              gtfsId: 'HSL:trip-4-live',
               route: {
                 shortName: '4',
               },
@@ -239,6 +249,7 @@ describe('useStopDepartures', () => {
             serviceDay: 1_700_000_000,
             headsign: 'Pasila',
             trip: {
+              gtfsId: 'HSL:trip-7B-scheduled',
               route: {
                 shortName: '7B',
               },
@@ -256,6 +267,37 @@ describe('useStopDepartures', () => {
       'realtime',
       'estimated',
     ]);
+  });
+
+  it('derives the service date in Helsinki time instead of the local device timezone', () => {
+    const model = normalizeStopDepartures({
+      stop: {
+        name: 'Central station',
+        code: '1001',
+        zoneId: 'A',
+        vehicleMode: 'TRAM',
+        direction: 'Munkkiniemi',
+        patterns: [],
+        stoptimesWithoutPatterns: [
+          {
+            scheduledDeparture: 120,
+            realtimeDeparture: 120,
+            realtime: false,
+            realtimeState: 'SCHEDULED',
+            serviceDay: Math.floor(Date.UTC(2023, 10, 14, 22, 0, 0) / 1000),
+            headsign: 'Munkkiniemi',
+            trip: {
+              gtfsId: 'HSL:trip-helsinki-midnight',
+              route: {
+                shortName: '4',
+              },
+            },
+          },
+        ],
+      },
+    } as never);
+
+    expect(model?.departures[0]?.serviceDate).toBe('20231115');
   });
 
   it('skips malformed rows instead of returning incomplete departure cards', () => {
@@ -278,6 +320,7 @@ describe('useStopDepartures', () => {
             serviceDay: 1_700_000_000,
             headsign: 'Munkkiniemi',
             trip: {
+              gtfsId: 'HSL:trip-4-live',
               route: {
                 shortName: '4',
               },
@@ -291,6 +334,7 @@ describe('useStopDepartures', () => {
             serviceDay: 1_700_000_000,
             headsign: '   ',
             trip: {
+              gtfsId: 'HSL:trip-invalid-headsign',
               route: {
                 shortName: '7B',
               },
@@ -304,6 +348,7 @@ describe('useStopDepartures', () => {
             serviceDay: 1_700_000_000,
             headsign: 'Pasila',
             trip: {
+              gtfsId: 'HSL:trip-invalid-route',
               route: {
                 shortName: '   ',
               },

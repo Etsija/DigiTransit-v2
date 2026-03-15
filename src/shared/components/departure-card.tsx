@@ -10,6 +10,7 @@ export type DepartureCardProps = {
   departureTime: string;
   departureEpochSeconds: number;
   status: StatusType;
+  expanded?: boolean;
   accessibilityLabel?: string;
   notificationScheduled?: boolean;
   onPress?: () => void;
@@ -36,6 +37,7 @@ export function DepartureCard({
   departureTime,
   departureEpochSeconds,
   status,
+  expanded,
   accessibilityLabel,
   notificationScheduled = false,
   onPress,
@@ -104,6 +106,7 @@ export function DepartureCard({
       <Pressable
         accessibilityRole='button'
         accessibilityLabel={resolvedAccessibilityLabel}
+        accessibilityState={expanded == null ? undefined : { expanded }}
         onPress={onPress}
         onLongPress={onLongPress}
         style={({ pressed }) => pressed && styles.pressed}

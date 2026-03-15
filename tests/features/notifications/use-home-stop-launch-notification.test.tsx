@@ -104,11 +104,13 @@ describe('useHomeStopLaunchNotification', () => {
       },
       departures: [
         {
+          tripId: 'HSL:trip-550-live',
           scheduledDeparture: 120,
           realtimeDeparture: 180,
           realtime: true,
           realtimeState: 'UPDATED',
           serviceDay: Math.floor(new Date('2026-03-12T10:00:00Z').getTime() / 1000),
+          serviceDate: '20260312',
           headsign: 'Itakeskus',
           routeShortName: '550',
           displayDepartureEpochSeconds:
@@ -279,11 +281,13 @@ describe('useHomeStopLaunchNotification', () => {
       },
       departures: [
         {
+          tripId: 'HSL:trip-21-past',
           scheduledDeparture: -120,
           realtimeDeparture: -120,
           realtime: false,
           realtimeState: 'SCHEDULED',
           serviceDay,
+          serviceDate: '20260312',
           headsign: 'Ruoholahti',
           routeShortName: '21',
           displayDepartureEpochSeconds: serviceDay - 120,
@@ -293,11 +297,13 @@ describe('useHomeStopLaunchNotification', () => {
           accessibilityLabel: '11:58, route 21 to Ruoholahti, Scheduled',
         },
         {
+          tripId: 'HSL:trip-14-next',
           scheduledDeparture: 300,
           realtimeDeparture: 300,
           realtime: false,
           realtimeState: 'SCHEDULED',
           serviceDay,
+          serviceDate: '20260312',
           headsign: 'Munkkivuori',
           routeShortName: '14',
           displayDepartureEpochSeconds: serviceDay + 300,

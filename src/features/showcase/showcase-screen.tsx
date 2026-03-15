@@ -12,6 +12,7 @@ import { GlassCard } from '@/shared/components/glass-card';
 import { MapMarker } from '@/shared/components/map-marker';
 import { StopCard } from '@/shared/components/stop-card';
 import { StopHeaderCard } from '@/shared/components/stop-header-card';
+import { StopProgressRow } from '@/shared/components/stop-progress-row';
 import { theme } from '@/shared/theme/theme';
 import { buildSettingsHref } from '@/types/navigation';
 import { LiveApiSection } from './live-api-section';
@@ -172,6 +173,17 @@ export function ShowcaseScreen() {
             description='Expanded stop summary for detail surfaces.'
           >
             <StopHeaderCard {...showcaseHeaderStop} />
+          </ShowcaseSection>
+
+          <ShowcaseSection
+            title='StopProgressRow'
+            description='Inline departure-progress states for expanded departure cards.'
+          >
+            <View style={styles.column}>
+              <StopProgressRow stopCode='H1234' stopName='Merikatu' state='upcoming' />
+              <StopProgressRow stopCode='H1235' stopName='Fredrikinkatu' state='arriving' />
+              <StopProgressRow stopCode='H1236' stopName='Kamppi' state='passed' />
+            </View>
           </ShowcaseSection>
 
           <ShowcaseSection
