@@ -1,0 +1,33 @@
+query DepartureProgressQuery($tripId: String!, $serviceDate: String!) {
+  trip(id: $tripId) {
+    id
+    semanticHash
+    pattern {
+      vehiclePositions {
+        stopRelationship {
+          status
+          stop {
+            gtfsId
+          }
+        }
+        trip {
+          semanticHash
+        }
+      }
+    }
+    stoptimesForDate(serviceDate: $serviceDate) {
+      serviceDay
+      scheduledArrival
+      realtimeArrival
+      scheduledDeparture
+      realtimeDeparture
+      realtime
+      stopPositionInPattern
+      stop {
+        gtfsId
+        code
+        name
+      }
+    }
+  }
+}

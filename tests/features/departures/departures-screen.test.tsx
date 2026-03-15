@@ -68,6 +68,10 @@ jest.mock('@/features/departures/hooks/use-stop-departures', () => ({
   useStopDepartures: jest.fn(),
 }));
 
+jest.mock('@/features/departures/hooks/use-departure-progress', () => ({
+  useDepartureProgress: jest.fn(),
+}));
+
 jest.mock('@/core/platform/notifications', () => ({
   notificationPlatformAdapter: {
     getPermissionState: jest.fn(),
@@ -88,6 +92,11 @@ describe('DeparturesScreen', () => {
   ) as {
     useStopDepartures: jest.Mock;
   };
+  const { useDepartureProgress } = jest.requireMock(
+    '@/features/departures/hooks/use-departure-progress'
+  ) as {
+    useDepartureProgress: jest.Mock;
+  };
   const { notificationPlatformAdapter } = jest.requireMock('@/core/platform/notifications') as {
     notificationPlatformAdapter: {
       getPermissionState: jest.Mock;
@@ -107,11 +116,13 @@ describe('DeparturesScreen', () => {
     },
     departures: [
       {
+        tripId: 'HSL:trip-4',
         scheduledDeparture: 120,
         realtimeDeparture: 125,
         realtime: true,
         realtimeState: 'UPDATED',
         serviceDay: 1_700_000_000,
+        serviceDate: '20231115',
         headsign: 'Munkkiniemi',
         routeShortName: '4',
         displayDepartureEpochSeconds: 1_700_000_125,
@@ -121,11 +132,13 @@ describe('DeparturesScreen', () => {
         accessibilityLabel: '22:15, route 4 to Munkkiniemi, Live GPS',
       },
       {
+        tripId: 'HSL:trip-7B',
         scheduledDeparture: 180,
         realtimeDeparture: 180,
         realtime: false,
         realtimeState: 'SCHEDULED',
         serviceDay: 1_700_000_000,
+        serviceDate: '20231115',
         headsign: 'Pasila',
         routeShortName: '7B',
         displayDepartureEpochSeconds: 1_700_000_180,
@@ -151,10 +164,23 @@ describe('DeparturesScreen', () => {
     };
   }
 
+  function createDepartureProgressQueryState(overrides: Record<string, unknown> = {}) {
+    return {
+      data: [],
+      error: null,
+      isError: false,
+      isFetching: false,
+      isPending: false,
+      status: 'success',
+      ...overrides,
+    };
+  }
+
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2023-11-14T22:10:00.000Z'));
     useStopDepartures.mockReturnValue(createDepartureQueryState());
+    useDepartureProgress.mockReturnValue(createDepartureProgressQueryState());
     notificationPlatformAdapter.getPermissionState.mockResolvedValue({
       supported: true,
       granted: true,
@@ -540,6 +566,177 @@ describe('DeparturesScreen', () => {
     });
   });
 
+  it('expands a tapped departure card inline, collapses on second tap, and renders stop-progress rows', async () => {
+    useDepartureProgress.mockReturnValue(
+      createDepartureProgressQueryState({
+        data: [
+          {
+            stopGtfsId: 'HSL:1000',
+            stopCode: '1000',
+            stopName: 'Lasipalatsi',
+            stopPositionInPattern: 0,
+            state: 'passed',
+            stateSource: 'realtime',
+          },
+          {
+            stopGtfsId: 'HSL:1001',
+            stopCode: '1001',
+            stopName: 'Central station',
+            stopPositionInPattern: 1,
+            state: 'arriving',
+            stateSource: 'realtime',
+          },
+        ],
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'));
+
+    expect(screen.getByTestId('departure-progress-panel')).toBeTruthy();
+    expect(screen.getByLabelText('1000 Lasipalatsi, passed')).toBeTruthy();
+    expect(screen.getByLabelText('1001 Central station, arriving')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'));
+
+    expect(screen.queryByTestId('departure-progress-panel')).toBeNull();
+  });
+
+  it('keeps only one departure card expanded at a time', async () => {
+    useDepartureProgress.mockReturnValue(
+      createDepartureProgressQueryState({
+        data: [
+          {
+            stopGtfsId: 'HSL:1001',
+            stopCode: '1001',
+            stopName: 'Central station',
+            stopPositionInPattern: 1,
+            state: 'arriving',
+            stateSource: 'realtime',
+          },
+        ],
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+      expect(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'));
+    expect(screen.getAllByTestId('departure-progress-panel')).toHaveLength(1);
+
+    fireEvent.press(screen.getByLabelText('22:16, route 7B to Pasila, Scheduled'));
+    expect(screen.getAllByTestId('departure-progress-panel')).toHaveLength(1);
+  });
+
+  it('keeps expanded content visible during a background refresh while cached departures remain available', async () => {
+    useDepartureProgress.mockReturnValue(
+      createDepartureProgressQueryState({
+        data: [
+          {
+            stopGtfsId: 'HSL:1001',
+            stopCode: '1001',
+            stopName: 'Central station',
+            stopPositionInPattern: 1,
+            state: 'arriving',
+            stateSource: 'realtime',
+          },
+        ],
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'));
+    expect(screen.getByTestId('departure-progress-panel')).toBeTruthy();
+
+    useStopDepartures.mockReturnValue(
+      createDepartureQueryState({ isFetching: true, isPending: false, isError: false })
+    );
+    screen.rerender(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    expect(screen.getByTestId('departure-progress-panel')).toBeTruthy();
+    expect(screen.getByTestId('departures-refresh-indicator')).toBeTruthy();
+  });
+
+  it('resets expanded departure state when the parent stop changes', async () => {
+    useDepartureProgress.mockReturnValue(
+      createDepartureProgressQueryState({
+        data: [
+          {
+            stopGtfsId: 'HSL:1001',
+            stopCode: '1001',
+            stopName: 'Central station',
+            stopPositionInPattern: 1,
+            state: 'arriving',
+            stateSource: 'realtime',
+          },
+        ],
+      })
+    );
+
+    const screen = render(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:1001'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('22:15, route 4 to Munkkiniemi, Live GPS'));
+    expect(screen.getByTestId('departure-progress-panel')).toBeTruthy();
+
+    screen.rerender(
+      <DeparturesScreen
+        onBack={onBack}
+        stopId='HSL:2002'
+        coordinates={{ latitude: 60.1699, longitude: 24.9384 }}
+      />
+    );
+
+    expect(screen.queryByTestId('departure-progress-panel')).toBeNull();
+  });
+
   it('prunes expired reminders during the active session so stale badges disappear', async () => {
     departureReminderStore.getState().setReminder('HSL:1001::1700000000::180::7B::Pasila', {
       notificationId: 'scheduled-id',
@@ -567,9 +764,23 @@ describe('DeparturesScreen', () => {
     });
   });
 
-  it('leaves departures rows non-interactive for reminder booking on web', async () => {
+  it('keeps tap-to-expand available on web while reminder long-press remains unsupported', async () => {
     const originalPlatform = Platform.OS;
     Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
+    useDepartureProgress.mockReturnValue(
+      createDepartureProgressQueryState({
+        data: [
+          {
+            stopGtfsId: 'HSL:1001',
+            stopCode: '1001',
+            stopName: 'Central station',
+            stopPositionInPattern: 1,
+            state: 'arriving',
+            stateSource: 'realtime',
+          },
+        ],
+      })
+    );
 
     const screen = render(
       <DeparturesScreen
@@ -580,12 +791,21 @@ describe('DeparturesScreen', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('22:15')).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: '22:15, route 4 to Munkkiniemi, Live GPS' })
+      ).toBeTruthy();
     });
 
-    expect(
-      screen.queryAllByRole('button', { name: '22:15, route 4 to Munkkiniemi, Live GPS' })
-    ).toHaveLength(0);
+    fireEvent.press(
+      screen.getByRole('button', { name: '22:15, route 4 to Munkkiniemi, Live GPS' })
+    );
+
+    expect(screen.getByTestId('departure-progress-panel')).toBeTruthy();
+    fireEvent(
+      screen.getByRole('button', { name: '22:15, route 4 to Munkkiniemi, Live GPS' }),
+      'longPress'
+    );
+    expect(screen.queryByText('Notify Me')).toBeNull();
 
     Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform });
   });

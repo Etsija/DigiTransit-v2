@@ -5,5 +5,13 @@ export const queryKeys = {
   },
   departures: {
     stop: (stopId: string) => ['departures', 'stop', stopId] as const,
+    progress: (
+      stopId: string,
+      params: {
+        tripId: string;
+        serviceDay: number;
+        scheduledDeparture: number;
+      }
+    ) => ['departures', 'progress', stopId, params] as const,
   },
 } as const;

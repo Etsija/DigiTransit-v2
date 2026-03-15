@@ -22,11 +22,13 @@ export type StopDepartureHeader = {
 };
 
 export type StopDeparture = {
+  tripId: string;
   scheduledDeparture: number;
   realtimeDeparture: number;
   realtime: boolean;
   realtimeState: string | null;
   serviceDay: number;
+  serviceDate: string;
   headsign: string;
   routeShortName: string;
   displayDepartureEpochSeconds: number;
@@ -49,6 +51,13 @@ export type UseStopDeparturesOptions = {
 type StopQueryStop = NonNullable<StopDeparturesQueryQuery['stop']>;
 type StopQueryStoptimes = StopQueryStop['stoptimesWithoutPatterns'];
 type StopQueryPatterns = StopQueryStop['patterns'];
+const DIGITRANSIT_SERVICE_TIME_ZONE = 'Europe/Helsinki';
+const serviceDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: DIGITRANSIT_SERVICE_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 
 function normalizePatternLabel(
   pattern: NonNullable<NonNullable<StopQueryPatterns>[number]>
@@ -137,8 +146,9 @@ function normalizeDepartures(stoptimes: StopQueryStoptimes): StopDeparture[] {
 
     const headsign = stoptime.headsign?.trim();
     const routeShortName = stoptime.trip?.route.shortName?.trim();
+    const tripId = stoptime.trip?.gtfsId?.trim();
 
-    if (!headsign || !routeShortName) {
+    if (!headsign || !routeShortName || !tripId) {
       continue;
     }
 
@@ -147,13 +157,20 @@ function normalizeDepartures(stoptimes: StopQueryStoptimes): StopDeparture[] {
     const displayDepartureSeconds =
       status === 'realtime' ? stoptime.realtimeDeparture : stoptime.scheduledDeparture;
     const displayTime = formatServiceDayDepartureTime(stoptime.serviceDay, displayDepartureSeconds);
+    const serviceDate = formatServiceDate(stoptime.serviceDay);
+
+    if (!serviceDate) {
+      continue;
+    }
 
     normalized.push({
+      tripId,
       scheduledDeparture: stoptime.scheduledDeparture,
       realtimeDeparture: stoptime.realtimeDeparture,
       realtime: Boolean(stoptime.realtime),
       realtimeState: stoptime.realtimeState ?? null,
       serviceDay: stoptime.serviceDay,
+      serviceDate,
       headsign,
       routeShortName,
       displayDepartureEpochSeconds: stoptime.serviceDay + displayDepartureSeconds,
@@ -165,6 +182,25 @@ function normalizeDepartures(stoptimes: StopQueryStoptimes): StopDeparture[] {
   }
 
   return normalized;
+}
+
+function formatServiceDate(serviceDay: number): string | null {
+  const serviceDate = new Date(serviceDay * 1000);
+
+  if (!Number.isFinite(serviceDate.getTime())) {
+    return null;
+  }
+
+  const parts = serviceDateFormatter.formatToParts(serviceDate);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return `${year}${month}${day}`;
 }
 
 export function normalizeStopDepartures(
