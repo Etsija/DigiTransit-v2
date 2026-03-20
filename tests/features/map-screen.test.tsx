@@ -269,6 +269,10 @@ describe('MapScreen', () => {
     expect(getByTestId('live-map-surface').props.recenterRequestKey).toBe(0);
     expect(getByTestId('live-map-surface').props.showUserLocation).toBe(true);
     expect(getByTestId('live-map-surface').props.markers).toEqual([]);
+    expect(getByTestId('live-map-surface').props.queryRadiusCircle).toEqual({
+      center: { latitude: 60.1699, longitude: 24.9384 },
+      radiusMeters: 250,
+    });
   });
 
   it('increments the recenter request key when the recenter button is pressed', () => {
@@ -510,13 +514,17 @@ describe('MapScreen', () => {
       expect(screen.getByText('Map center')).toBeTruthy();
       expect(screen.getByText('60.175°N, 24.945°E')).toBeTruthy();
       expect(screen.getByTestId('live-map-surface').props.mode).toBe('detached');
+      expect(screen.getByTestId('live-map-surface').props.queryRadiusCircle).toEqual({
+        center: { latitude: 60.175, longitude: 24.945 },
+        radiusMeters: 250,
+      });
       expect(useReverseGeocode).toHaveBeenLastCalledWith({
         latitude: 60.175,
         longitude: 24.945,
       });
       expect(useNearbyStops).toHaveBeenLastCalledWith({
-        coordinates: null,
-        enabled: false,
+        coordinates: { latitude: 60.1699, longitude: 24.9384 },
+        enabled: true,
       });
     });
   });
@@ -535,8 +543,8 @@ describe('MapScreen', () => {
     });
 
     expect(useNearbyStops).toHaveBeenLastCalledWith({
-      coordinates: null,
-      enabled: false,
+      coordinates: { latitude: 60.1699, longitude: 24.9384 },
+      enabled: true,
     });
 
     fireEvent.press(screen.getByTestId('map-query-here-button'));
@@ -573,6 +581,10 @@ describe('MapScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByText('60.178°N, 24.948°E')).toBeTruthy();
+      expect(screen.getByTestId('live-map-surface').props.queryRadiusCircle).toEqual({
+        center: { latitude: 60.178, longitude: 24.948 },
+        radiusMeters: 250,
+      });
       expect(useNearbyStops).toHaveBeenLastCalledWith({
         coordinates: { latitude: 60.176, longitude: 24.946 },
         enabled: true,
@@ -599,6 +611,10 @@ describe('MapScreen', () => {
       expect(screen.queryByTestId('map-query-here-button')).toBeNull();
       expect(screen.getByText('60.170°N, 24.938°E')).toBeTruthy();
       expect(screen.getByTestId('live-map-surface').props.mode).toBe('live');
+      expect(screen.getByTestId('live-map-surface').props.queryRadiusCircle).toEqual({
+        center: { latitude: 60.1699, longitude: 24.9384 },
+        radiusMeters: 250,
+      });
       expect(useReverseGeocode).toHaveBeenLastCalledWith({
         latitude: 60.1699,
         longitude: 24.9384,
@@ -664,8 +680,8 @@ describe('MapScreen', () => {
       expect(screen.getByTestId('live-map-surface').props.mode).toBe('detached');
       expect(screen.getByTestId('map-query-here-button')).toBeTruthy();
       expect(useNearbyStops).toHaveBeenLastCalledWith({
-        coordinates: null,
-        enabled: false,
+        coordinates: { latitude: 60.1699, longitude: 24.9384 },
+        enabled: true,
       });
     });
 
@@ -684,6 +700,48 @@ describe('MapScreen', () => {
       expect(screen.getByTestId('live-map-surface').props.mode).toBe('detached');
       expect(screen.getByTestId('live-map-surface').props.latitude).toBe(60.1699);
       expect(screen.getByTestId('live-map-surface').props.longitude).toBe(24.9384);
+      expect(useNearbyStops).toHaveBeenLastCalledWith({
+        coordinates: { latitude: 60.1715, longitude: 24.9422 },
+        enabled: true,
+      });
+    });
+  });
+
+  it('keeps live nearby-stop queries updating in detached preview until query here is pressed', async () => {
+    const screen = render(<MapScreen />);
+
+    fireEvent(screen.getByTestId('live-map-surface'), 'onUserInteractionStart');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('live-map-surface').props.mode).toBe('detached');
+      expect(useNearbyStops).toHaveBeenLastCalledWith({
+        coordinates: { latitude: 60.1699, longitude: 24.9384 },
+        enabled: true,
+      });
+    });
+
+    useDeviceLocation.mockReturnValue({
+      coordinates: { latitude: 60.1722, longitude: 24.9444 },
+      permission: { status: 'granted', canAskAgain: true },
+      hasRequestedPermission: true,
+      isFixed: true,
+      isLoading: false,
+      error: null,
+    });
+
+    screen.rerender(<MapScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('live-map-surface').props.latitude).toBe(60.1699);
+      expect(screen.getByTestId('live-map-surface').props.longitude).toBe(24.9384);
+      expect(screen.getByTestId('live-map-surface').props.queryRadiusCircle).toEqual({
+        center: { latitude: 60.1699, longitude: 24.9384 },
+        radiusMeters: 250,
+      });
+      expect(useNearbyStops).toHaveBeenLastCalledWith({
+        coordinates: { latitude: 60.1722, longitude: 24.9444 },
+        enabled: true,
+      });
     });
   });
 

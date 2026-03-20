@@ -5,7 +5,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { getMapboxPublicToken } from '@/core/config/env';
 import { MapMarker } from '@/shared/components/map-marker';
 import { theme } from '@/shared/theme/theme';
-import type { PlatformMapCoordinates, PlatformMapMarker, PlatformMapViewProps } from './types';
+import type {
+  PlatformMapCoordinates,
+  PlatformMapMarker,
+  PlatformMapRadiusCircle,
+  PlatformMapUserInteraction,
+  PlatformMapViewProps,
+} from './types';
 
 export const MAPBOX_DARK_STYLE_URL = 'mapbox://styles/mapbox/dark-v11';
 
@@ -44,6 +50,10 @@ type ManagedMapboxMarker = {
   marker: mapboxgl.Marker;
   root: MarkerRoot;
 };
+
+const QUERY_RADIUS_SOURCE_ID = 'nearby-query-radius-source';
+const QUERY_RADIUS_FILL_LAYER_ID = 'nearby-query-radius-fill';
+const QUERY_RADIUS_STROKE_LAYER_ID = 'nearby-query-radius-stroke';
 
 function createMarkerRoot(container: Element | DocumentFragment): MarkerRoot {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -127,15 +137,106 @@ export function syncLiveLocationMarker(
   };
 }
 
+function createCircleFeature(
+  center: PlatformMapCoordinates,
+  radiusMeters: number,
+  points: number = 48
+) {
+  const latitudeRadians = (center.latitude * Math.PI) / 180;
+  const latDegreesPerMeter = 1 / 111_320;
+  const lonDegreesPerMeter = 1 / (111_320 * Math.max(Math.cos(latitudeRadians), 0.000_001));
+  const coordinates: [number, number][] = [];
+
+  for (let index = 0; index <= points; index += 1) {
+    const angle = (index / points) * Math.PI * 2;
+    coordinates.push([
+      center.longitude + Math.cos(angle) * radiusMeters * lonDegreesPerMeter,
+      center.latitude + Math.sin(angle) * radiusMeters * latDegreesPerMeter,
+    ]);
+  }
+
+  return {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: [coordinates],
+    },
+  };
+}
+
+export function syncQueryRadiusCircle(
+  map: mapboxgl.Map,
+  queryRadiusCircle: PlatformMapRadiusCircle | null
+) {
+  if (!queryRadiusCircle) {
+    return undefined;
+  }
+
+  const data = createCircleFeature(queryRadiusCircle.center, queryRadiusCircle.radiusMeters);
+  const existingSource = map.getSource(QUERY_RADIUS_SOURCE_ID) as
+    | { setData: (nextData: typeof data) => void }
+    | undefined;
+
+  if (existingSource) {
+    existingSource.setData(data);
+    return undefined;
+  }
+
+  map.addSource(QUERY_RADIUS_SOURCE_ID, {
+    type: 'geojson',
+    data,
+  });
+  map.addLayer({
+    id: QUERY_RADIUS_FILL_LAYER_ID,
+    type: 'fill',
+    source: QUERY_RADIUS_SOURCE_ID,
+    paint: {
+      'fill-color': theme.colors.link.primary,
+      'fill-opacity': 0.08,
+    },
+  });
+  map.addLayer({
+    id: QUERY_RADIUS_STROKE_LAYER_ID,
+    type: 'line',
+    source: QUERY_RADIUS_SOURCE_ID,
+    paint: {
+      'line-color': theme.colors.link.primary,
+      'line-opacity': 0.3,
+      'line-width': 1,
+    },
+  });
+
+  return () => {
+    if (map.getLayer(QUERY_RADIUS_STROKE_LAYER_ID)) {
+      map.removeLayer(QUERY_RADIUS_STROKE_LAYER_ID);
+    }
+
+    if (map.getLayer(QUERY_RADIUS_FILL_LAYER_ID)) {
+      map.removeLayer(QUERY_RADIUS_FILL_LAYER_ID);
+    }
+
+    map.removeSource(QUERY_RADIUS_SOURCE_ID);
+  };
+}
+
 export function bindMapboxUserCenterChanges(
   map: mapboxgl.Map,
   interactionRef: React.MutableRefObject<boolean>,
-  onUserInteractionStart?: () => void,
+  onUserInteractionStart?: (interaction: PlatformMapUserInteraction) => void,
   onUserCenterChange?: (coordinates: PlatformMapCoordinates) => void
 ) {
   const handleDragStart = () => {
     interactionRef.current = true;
-    onUserInteractionStart?.();
+    onUserInteractionStart?.({ kind: 'pan' });
+  };
+
+  const handleDrag = () => {
+    const center = map.getCenter();
+    onUserCenterChange?.({
+      latitude: center.lat,
+      longitude: center.lng,
+    });
   };
 
   const handleDragEnd = () => {
@@ -148,10 +249,12 @@ export function bindMapboxUserCenterChanges(
   };
 
   map.on('dragstart', handleDragStart);
+  map.on('drag', handleDrag);
   map.on('dragend', handleDragEnd);
 
   return () => {
     map.off('dragstart', handleDragStart);
+    map.off('drag', handleDrag);
     map.off('dragend', handleDragEnd);
   };
 }
@@ -165,6 +268,7 @@ export function PlatformMapView({
   onMapReady,
   onUserInteractionStart,
   onUserCenterChange,
+  queryRadiusCircle = null,
   showUserLocation,
 }: PlatformMapViewProps) {
   const mapContainerRef = useRef<unknown>(null);
@@ -242,6 +346,31 @@ export function PlatformMapView({
 
     return syncLiveLocationMarker(mapInstance, liveLocationCoordinates, showUserLocation);
   }, [liveLocationCoordinates, mapInstance, showUserLocation]);
+
+  useEffect(() => {
+    if (!mapInstance) {
+      return;
+    }
+
+    // Do not return the cleanup from syncQueryRadiusCircle here: the source and
+    // layers must persist across queryRadiusCircle updates so that subsequent
+    // calls hit the setData fast-update path rather than tearing down and
+    // recreating the source on every pan frame. The source is removed when the
+    // map instance is destroyed via map.remove() in the init effect cleanup.
+    const applyCircle = () => {
+      syncQueryRadiusCircle(mapInstance, queryRadiusCircle);
+    };
+
+    if (mapInstance.isStyleLoaded()) {
+      applyCircle();
+    } else {
+      mapInstance.once('load', applyCircle);
+    }
+
+    return () => {
+      mapInstance.off('load', applyCircle);
+    };
+  }, [mapInstance, queryRadiusCircle]);
 
   if (!mapboxToken) {
     return (

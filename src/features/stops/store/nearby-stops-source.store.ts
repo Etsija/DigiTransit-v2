@@ -10,6 +10,7 @@ export type NearbyStopsSourceState = {
   mode: 'live' | 'detached';
   detachedCenter: Coordinates | null;
   detachedQueryCoordinates: Coordinates | null;
+  hasConfirmedDetachedQuery: boolean;
   startDetached: (coordinates: Coordinates) => void;
   setDetachedCenter: (coordinates: Coordinates) => void;
   confirmDetachedQuery: () => void;
@@ -20,7 +21,11 @@ const initialNearbyStopsSourceState = {
   mode: 'live',
   detachedCenter: null,
   detachedQueryCoordinates: null,
-} satisfies Pick<NearbyStopsSourceState, 'mode' | 'detachedCenter' | 'detachedQueryCoordinates'>;
+  hasConfirmedDetachedQuery: false,
+} satisfies Pick<
+  NearbyStopsSourceState,
+  'mode' | 'detachedCenter' | 'detachedQueryCoordinates' | 'hasConfirmedDetachedQuery'
+>;
 
 const nearbyStopsSourceStore = createStore<NearbyStopsSourceState>()((set, get) => ({
   ...initialNearbyStopsSourceState,
@@ -33,6 +38,7 @@ const nearbyStopsSourceStore = createStore<NearbyStopsSourceState>()((set, get) 
             mode: 'detached',
             detachedCenter: coordinates,
             detachedQueryCoordinates: null,
+            hasConfirmedDetachedQuery: false,
           }
     ),
   setDetachedCenter: (coordinates) =>
@@ -47,6 +53,7 @@ const nearbyStopsSourceStore = createStore<NearbyStopsSourceState>()((set, get) 
         ? {
             ...state,
             detachedQueryCoordinates: state.detachedCenter,
+            hasConfirmedDetachedQuery: true,
           }
         : state
     ),
@@ -65,15 +72,5 @@ export function getNearbyStopsSourceStore() {
 }
 
 export function __resetNearbyStopsSourceTestState() {
-  nearbyStopsSourceStore.setState({
-    ...initialNearbyStopsSourceState,
-    startDetached: get().startDetached,
-    setDetachedCenter: get().setDetachedCenter,
-    confirmDetachedQuery: get().confirmDetachedQuery,
-    returnToLive: get().returnToLive,
-  });
-}
-
-function get() {
-  return nearbyStopsSourceStore.getState();
+  nearbyStopsSourceStore.setState(initialNearbyStopsSourceState);
 }
