@@ -80,6 +80,9 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   const detachedQueryCoordinates = useNearbyStopsSourceStore(
     (state) => state.detachedQueryCoordinates
   );
+  const hasConfirmedDetachedQuery = useNearbyStopsSourceStore(
+    (state) => state.hasConfirmedDetachedQuery
+  );
   const startDetached = useNearbyStopsSourceStore((state) => state.startDetached);
   const setDetachedCenter = useNearbyStopsSourceStore((state) => state.setDetachedCenter);
   const confirmDetachedQuery = useNearbyStopsSourceStore((state) => state.confirmDetachedQuery);
@@ -95,6 +98,20 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
   const showDeniedState = location.permission.status === 'denied';
   const showRecenterButton = location.permission.status === 'granted' && Boolean(liveCoordinates);
   const showDetachedQueryButton = isDetached && Boolean(detachedCenter);
+  const visibleNearbyStopsCoordinates =
+    isDetached && hasConfirmedDetachedQuery ? detachedQueryCoordinates : liveCoordinates;
+  const queryRadiusCircle =
+    isDetached && detachedCenter
+      ? {
+          center: detachedCenter,
+          radiusMeters: searchRadiusMeters,
+        }
+      : liveCoordinates
+        ? {
+            center: liveCoordinates,
+            radiusMeters: searchRadiusMeters,
+          }
+        : null;
   const cameraOverride =
     activeCameraRequestKey === recenterToken && cameraOverrideCoordinates
       ? {
@@ -139,6 +156,11 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
         return;
       }
 
+      // Also covers the synchronous live→detach transition on native: when the
+      // adapter fires onUserInteractionStart and onUserCenterChange in the same
+      // tick (inside onRegionChangeComplete), isDetached is stale (false) here.
+      // setDetachedCenter forces mode:'detached' regardless, so the final store
+      // state is correct even though isDetached reads as false in this closure.
       setDetachedCenter(nextCenter);
     },
     [isDetached, liveCoordinates, setDetachedCenter]
@@ -147,9 +169,8 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
     confirmDetachedQuery();
   }, [confirmDetachedQuery]);
   const nearbyStopsQuery = useNearbyStops({
-    coordinates: isDetached ? detachedQueryCoordinates : liveCoordinates,
-    enabled:
-      isActive && (isDetached ? Boolean(detachedQueryCoordinates) : Boolean(liveCoordinates)),
+    coordinates: visibleNearbyStopsCoordinates,
+    enabled: isActive && Boolean(visibleNearbyStopsCoordinates),
   });
   const markers = useMemo(
     () =>
@@ -223,6 +244,7 @@ export function MapScreen({ isActive = true, onSelectStop }: MapScreenProps) {
         onMapReady={handleMapReady}
         onUserInteractionStart={handleUserInteractionStart}
         onUserCenterChange={handleUserCenterChange}
+        queryRadiusCircle={queryRadiusCircle}
         recenterRequestKey={recenterToken}
         showUserLocation={location.permission.status === 'granted'}
       />

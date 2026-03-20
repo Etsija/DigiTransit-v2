@@ -9,17 +9,32 @@ import {
   PlatformMapView,
   syncLiveLocationMarker,
   syncMapboxMarkers,
+  syncQueryRadiusCircle,
 } from '@/core/platform/maps/map-view.web';
 
 const mockMapOn = jest.fn();
 const mockMapOff = jest.fn();
 const mockMapGetCenter = jest.fn(() => ({ lat: 60.175, lng: 24.945 }));
+const mockGetLayer = jest.fn();
+const mockGetSource = jest.fn();
+const mockAddLayer = jest.fn();
+const mockAddSource = jest.fn();
+const mockRemoveLayer = jest.fn();
+const mockRemoveSource = jest.fn();
+const mockIsStyleLoaded = jest.fn(() => true);
 const mockCreateMap = jest.fn((_options?: unknown) => ({
+  addLayer: mockAddLayer,
+  addSource: mockAddSource,
   getCenter: mockMapGetCenter,
+  getLayer: mockGetLayer,
+  getSource: mockGetSource,
+  isStyleLoaded: mockIsStyleLoaded,
   off: mockMapOff,
   on: mockMapOn,
   once: jest.fn((_event: string, callback: () => void) => callback()),
+  removeLayer: mockRemoveLayer,
   remove: jest.fn(),
+  removeSource: mockRemoveSource,
   setCenter: jest.fn(),
 }));
 const mockAddTo = jest.fn(function addTo() {
@@ -60,9 +75,16 @@ describe('PlatformMapView web', () => {
     mockSetLngLat.mockClear();
     mockRemoveMarker.mockClear();
     mockCreateRoot.mockClear();
+    mockIsStyleLoaded.mockClear();
     mockMapOn.mockClear();
     mockMapOff.mockClear();
     mockMapGetCenter.mockClear();
+    mockGetLayer.mockClear();
+    mockGetSource.mockClear();
+    mockAddLayer.mockClear();
+    mockAddSource.mockClear();
+    mockRemoveLayer.mockClear();
+    mockRemoveSource.mockClear();
     delete process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN;
     global.document = {
       createElement: jest.fn(() => ({
@@ -196,12 +218,15 @@ describe('PlatformMapView web', () => {
     );
 
     expect(mockMapOn).toHaveBeenCalledWith('dragstart', expect.any(Function));
+    expect(mockMapOn).toHaveBeenCalledWith('drag', expect.any(Function));
     expect(mockMapOn).toHaveBeenCalledWith('dragend', expect.any(Function));
 
     const startHandler = mockMapOn.mock.calls.find(([event]) => event === 'dragstart')?.[1];
-    const handler = mockMapOn.mock.calls.find(([event]) => event === 'dragend')?.[1];
+    const dragHandler = mockMapOn.mock.calls.find(([event]) => event === 'drag')?.[1];
+    const endHandler = mockMapOn.mock.calls.find(([event]) => event === 'dragend')?.[1];
     startHandler();
-    handler();
+    dragHandler();
+    endHandler();
 
     expect(interactionRef.current).toBe(false);
     expect(onUserInteractionStart).toHaveBeenCalledTimes(1);
@@ -213,6 +238,67 @@ describe('PlatformMapView web', () => {
     cleanup();
 
     expect(mockMapOff).toHaveBeenCalledWith('dragstart', startHandler);
-    expect(mockMapOff).toHaveBeenCalledWith('dragend', handler);
+    expect(mockMapOff).toHaveBeenCalledWith('drag', dragHandler);
+    expect(mockMapOff).toHaveBeenCalledWith('dragend', endHandler);
+  });
+
+  it('syncs the query radius circle through a geojson source and cleanup layers', () => {
+    mockGetSource.mockReturnValue(undefined);
+    mockGetLayer.mockReturnValue(true);
+
+    const cleanup = syncQueryRadiusCircle(
+      {
+        addLayer: mockAddLayer,
+        addSource: mockAddSource,
+        getLayer: mockGetLayer,
+        getSource: mockGetSource,
+        removeLayer: mockRemoveLayer,
+        removeSource: mockRemoveSource,
+      } as never,
+      {
+        center: { latitude: 60.1699, longitude: 24.9384 },
+        radiusMeters: 250,
+      }
+    );
+
+    expect(mockAddSource).toHaveBeenCalledWith(
+      'nearby-query-radius-source',
+      expect.objectContaining({
+        type: 'geojson',
+        data: expect.objectContaining({
+          geometry: expect.objectContaining({
+            type: 'Polygon',
+          }),
+        }),
+      })
+    );
+    expect(mockAddLayer).toHaveBeenCalledTimes(2);
+
+    cleanup?.();
+
+    expect(mockRemoveLayer).toHaveBeenCalledWith('nearby-query-radius-stroke');
+    expect(mockRemoveLayer).toHaveBeenCalledWith('nearby-query-radius-fill');
+    expect(mockRemoveSource).toHaveBeenCalledWith('nearby-query-radius-source');
+  });
+
+  it('updates an existing query radius source without re-adding layers', () => {
+    const setData = jest.fn();
+    mockGetSource.mockReturnValue({ setData });
+
+    syncQueryRadiusCircle(
+      {
+        addLayer: mockAddLayer,
+        addSource: mockAddSource,
+        getSource: mockGetSource,
+      } as never,
+      {
+        center: { latitude: 60.1699, longitude: 24.9384 },
+        radiusMeters: 250,
+      }
+    );
+
+    expect(setData).toHaveBeenCalledTimes(1);
+    expect(mockAddSource).not.toHaveBeenCalled();
+    expect(mockAddLayer).not.toHaveBeenCalled();
   });
 });

@@ -34,6 +34,7 @@ jest.mock('react-native-maps', () => {
 
   return {
     __esModule: true,
+    Circle: (props: any) => <View {...props} />,
     default: MockMapView,
     Marker: (props: any) => <View {...props} />,
     PROVIDER_GOOGLE: 'google',

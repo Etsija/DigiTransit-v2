@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import { Platform, StyleSheet, View, type NativeSyntheticEvent } from 'react-native';
+import MapView, { Circle, Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
 import { getIosGoogleMapsApiKey } from '@/core/config/env';
 import { MAP_REGION_DELTA } from '@/features/map/constants';
@@ -8,6 +8,18 @@ import { MapMarker } from '@/shared/components/map-marker';
 import { nativeDarkMapStyle } from '@/shared/theme/map-theme';
 import { theme } from '@/shared/theme/theme';
 import type { PlatformMapViewProps } from './types';
+
+type NativePanDragEvent = NativeSyntheticEvent<{
+  coordinate: {
+    latitude: number;
+    longitude: number;
+  };
+  numberOfTouches?: number;
+  position?: {
+    x: number;
+    y: number;
+  };
+}>;
 
 function buildRegion(
   latitude: number,
@@ -27,11 +39,25 @@ function shouldUseGoogleProvider() {
   return Platform.OS === 'android' || getIosGoogleMapsApiKey().length > 0;
 }
 
+const ZOOM_CHANGE_THRESHOLD = 0.08;
+
+function getZoomChangeRatio(reference: Region, next: Region) {
+  const latitudeRatio =
+    Math.abs(next.latitudeDelta - reference.latitudeDelta) /
+    Math.max(reference.latitudeDelta, Number.EPSILON);
+  const longitudeRatio =
+    Math.abs(next.longitudeDelta - reference.longitudeDelta) /
+    Math.max(reference.longitudeDelta, Number.EPSILON);
+
+  return Math.max(latitudeRatio, longitudeRatio);
+}
+
 export function PlatformMapView({
   latitude,
   longitude,
   camera,
   liveLocationCoordinates,
+  queryRadiusCircle = null,
   mode = 'live',
   recenterRequestKey = 0,
   markers = [],
@@ -40,13 +66,15 @@ export function PlatformMapView({
   onUserCenterChange,
   showUserLocation,
 }: PlatformMapViewProps) {
+  const initialRegion = buildRegion(latitude, longitude);
   const mapRef = useRef<MapView | null>(null);
   const tracksViewChangesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserInteractingRef = useRef(false);
+  const gestureTouchCountRef = useRef(0);
+  const lastSettledRegionRef = useRef(initialRegion);
   const lastRecenterRequestKeyRef = useRef(recenterRequestKey);
   const suppressNextRegionChangeRef = useRef(false);
   const [tracksViewChanges, setTracksViewChanges] = React.useState(markers.length > 0);
-  const initialRegion = buildRegion(latitude, longitude);
 
   useEffect(() => {
     const isExplicitRecenter = recenterRequestKey !== lastRecenterRequestKeyRef.current;
@@ -95,31 +123,81 @@ export function PlatformMapView({
     };
   }, [markers]);
 
+  const shouldHandleGestureRegion = (details?: { isGesture?: boolean }) => {
+    if (suppressNextRegionChangeRef.current) {
+      return false;
+    }
+
+    if (details && 'isGesture' in details && !details.isGesture) {
+      return false;
+    }
+
+    if (gestureTouchCountRef.current > 1) {
+      return false;
+    }
+
+    return true;
+  };
+
   return (
     <View style={styles.container}>
       <MapView
         customMapStyle={nativeDarkMapStyle}
         initialRegion={initialRegion}
         onMapReady={onMapReady}
-        onPanDrag={() => {
+        onPanDrag={(event: NativePanDragEvent) => {
+          const touchCount = event.nativeEvent.numberOfTouches ?? 1;
+          gestureTouchCountRef.current = touchCount;
+
+          // Native pan events expose touch count, but pinch gestures can still shift the
+          // center. Defer the detach signal until region changes confirm that zoom stayed
+          // roughly stable and the gesture looks like a drag rather than a pinch.
+          if (touchCount > 1) {
+            isUserInteractingRef.current = false;
+            return;
+          }
+
           isUserInteractingRef.current = true;
-          onUserInteractionStart?.();
         }}
-        onRegionChangeComplete={(region, details) => {
-          if (suppressNextRegionChangeRef.current) {
-            suppressNextRegionChangeRef.current = false;
+        onRegionChange={(region, details) => {
+          if (
+            mode !== 'detached' ||
+            !isUserInteractingRef.current ||
+            !shouldHandleGestureRegion(details)
+          ) {
             return;
           }
 
-          if (details && 'isGesture' in details && !details.isGesture) {
-            return;
-          }
-
-          isUserInteractingRef.current = false;
           onUserCenterChange?.({
             latitude: region.latitude,
             longitude: region.longitude,
           });
+        }}
+        onRegionChangeComplete={(region, details) => {
+          if (suppressNextRegionChangeRef.current) {
+            suppressNextRegionChangeRef.current = false;
+            lastSettledRegionRef.current = region;
+            return;
+          }
+
+          const shouldHandleGesture = shouldHandleGestureRegion(details);
+          const shouldCommitLiveDetach =
+            mode === 'live' &&
+            isUserInteractingRef.current &&
+            shouldHandleGesture &&
+            getZoomChangeRatio(lastSettledRegionRef.current, region) <= ZOOM_CHANGE_THRESHOLD;
+
+          if (shouldCommitLiveDetach) {
+            onUserInteractionStart?.({ kind: 'pan' });
+            onUserCenterChange?.({
+              latitude: region.latitude,
+              longitude: region.longitude,
+            });
+          }
+
+          lastSettledRegionRef.current = region;
+          isUserInteractingRef.current = false;
+          gestureTouchCountRef.current = 0;
         }}
         provider={shouldUseGoogleProvider() ? PROVIDER_GOOGLE : undefined}
         ref={mapRef}
@@ -140,6 +218,16 @@ export function PlatformMapView({
               <View style={styles.liveLocationMarkerCore} />
             </View>
           </Marker>
+        ) : null}
+        {queryRadiusCircle ? (
+          <Circle
+            center={queryRadiusCircle.center}
+            fillColor={`${theme.colors.link.primary}14`}
+            radius={queryRadiusCircle.radiusMeters}
+            strokeColor={`${theme.colors.link.primary}55`}
+            strokeWidth={1}
+            testID='map-query-radius-circle'
+          />
         ) : null}
         {markers.map((marker) => (
           <Marker

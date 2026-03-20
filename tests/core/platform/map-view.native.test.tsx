@@ -4,6 +4,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
 
 import { PlatformMapView } from '@/core/platform/maps/map-view.native';
+import { MAP_REGION_DELTA } from '@/features/map/constants';
 
 const mockAnimateToRegion = jest.fn();
 
@@ -27,6 +28,7 @@ jest.mock('react-native-maps', () => {
   return {
     __esModule: true,
     default: MockMapView,
+    Circle: (props: any) => <View {...props} />,
     Marker: (props: any) => <View {...props} />,
     PROVIDER_GOOGLE: 'google',
   };
@@ -154,7 +156,7 @@ describe('PlatformMapView native', () => {
     expect(getByTestId('map-marker-stop-1').props.tracksViewChanges).toBe(false);
   });
 
-  it('reports user-driven center changes and ignores programmatic recenter callbacks', () => {
+  it('commits live detach on pan completion and ignores programmatic recenter callbacks', () => {
     const onUserCenterChange = jest.fn();
     const onUserInteractionStart = jest.fn();
     const { getByTestId, rerender } = render(
@@ -174,13 +176,17 @@ describe('PlatformMapView native', () => {
       />
     );
 
-    fireEvent(getByTestId('live-map-surface'), 'onPanDrag');
+    fireEvent(getByTestId('live-map-surface'), 'onPanDrag', {
+      nativeEvent: { numberOfTouches: 1 },
+    });
 
-    expect(onUserInteractionStart).toHaveBeenCalledTimes(1);
+    expect(onUserInteractionStart).not.toHaveBeenCalled();
 
     fireEvent(getByTestId('live-map-surface'), 'onRegionChangeComplete', {
       latitude: 60.1699,
       longitude: 24.9384,
+      latitudeDelta: MAP_REGION_DELTA.latitudeDelta,
+      longitudeDelta: MAP_REGION_DELTA.longitudeDelta,
     });
 
     expect(onUserCenterChange).not.toHaveBeenCalled();
@@ -191,10 +197,13 @@ describe('PlatformMapView native', () => {
       {
         latitude: 60.175,
         longitude: 24.945,
+        latitudeDelta: MAP_REGION_DELTA.latitudeDelta,
+        longitudeDelta: MAP_REGION_DELTA.longitudeDelta,
       },
       { isGesture: true }
     );
 
+    expect(onUserInteractionStart).toHaveBeenCalledTimes(1);
     expect(onUserCenterChange).toHaveBeenCalledWith({
       latitude: 60.175,
       longitude: 24.945,
@@ -232,7 +241,9 @@ describe('PlatformMapView native', () => {
 
     mockAnimateToRegion.mockClear();
 
-    fireEvent(getByTestId('live-map-surface'), 'onPanDrag');
+    fireEvent(getByTestId('live-map-surface'), 'onPanDrag', {
+      nativeEvent: { numberOfTouches: 1 },
+    });
 
     rerender(<PlatformMapView latitude={60.1711} longitude={24.9412} showUserLocation />);
 
@@ -244,6 +255,149 @@ describe('PlatformMapView native', () => {
       <PlatformMapView latitude={60.1699} longitude={24.9384} mode='detached' showUserLocation />
     );
 
+    expect(getByTestId('map-detached-center-marker')).toBeTruthy();
+  });
+
+  it('ignores multi-touch pan drag callbacks so pinch zoom does not start detached mode', () => {
+    const onUserCenterChange = jest.fn();
+    const onUserInteractionStart = jest.fn();
+    const { getByTestId } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        onUserInteractionStart={onUserInteractionStart}
+        onUserCenterChange={onUserCenterChange}
+        showUserLocation
+      />
+    );
+
+    fireEvent(getByTestId('live-map-surface'), 'onPanDrag', {
+      nativeEvent: { numberOfTouches: 2 },
+    });
+    getByTestId('live-map-surface').props.onRegionChange(
+      {
+        latitude: 60.175,
+        longitude: 24.945,
+      },
+      { isGesture: true }
+    );
+
+    expect(onUserInteractionStart).not.toHaveBeenCalled();
+    expect(onUserCenterChange).not.toHaveBeenCalled();
+  });
+
+  it('ignores gesture region changes in live mode until a pan interaction has started', () => {
+    const onUserCenterChange = jest.fn();
+    const { getByTestId } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        onUserCenterChange={onUserCenterChange}
+        showUserLocation
+      />
+    );
+
+    getByTestId('live-map-surface').props.onRegionChange(
+      {
+        latitude: 60.175,
+        longitude: 24.945,
+      },
+      { isGesture: true }
+    );
+
+    fireEvent(
+      getByTestId('live-map-surface'),
+      'onRegionChangeComplete',
+      {
+        latitude: 60.175,
+        longitude: 24.945,
+      },
+      { isGesture: true }
+    );
+
+    expect(onUserCenterChange).not.toHaveBeenCalled();
+  });
+
+  it('does not confirm a detach interaction when the gesture also changes zoom level', () => {
+    const onUserCenterChange = jest.fn();
+    const onUserInteractionStart = jest.fn();
+    const { getByTestId } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        onUserCenterChange={onUserCenterChange}
+        onUserInteractionStart={onUserInteractionStart}
+        showUserLocation
+      />
+    );
+
+    fireEvent(getByTestId('live-map-surface'), 'onPanDrag', {
+      nativeEvent: { numberOfTouches: 1 },
+    });
+
+    fireEvent(
+      getByTestId('live-map-surface'),
+      'onRegionChangeComplete',
+      {
+        latitude: 60.175,
+        longitude: 24.945,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.015,
+      },
+      { isGesture: true }
+    );
+
+    expect(onUserInteractionStart).not.toHaveBeenCalled();
+    expect(onUserCenterChange).not.toHaveBeenCalled();
+  });
+
+  it('keeps publishing center changes while panning in detached mode', () => {
+    const onUserCenterChange = jest.fn();
+    const { getByTestId } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        mode='detached'
+        onUserCenterChange={onUserCenterChange}
+        showUserLocation
+      />
+    );
+
+    fireEvent(getByTestId('live-map-surface'), 'onPanDrag', {
+      nativeEvent: { numberOfTouches: 1 },
+    });
+
+    getByTestId('live-map-surface').props.onRegionChange(
+      {
+        latitude: 60.175,
+        longitude: 24.945,
+        latitudeDelta: 0.025,
+        longitudeDelta: 0.025,
+      },
+      { isGesture: true }
+    );
+
+    expect(onUserCenterChange).toHaveBeenCalledWith({
+      latitude: 60.175,
+      longitude: 24.945,
+    });
+  });
+
+  it('renders the configured query radius circle without replacing other overlays', () => {
+    const { getByTestId } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        mode='detached'
+        queryRadiusCircle={{
+          center: { latitude: 60.1699, longitude: 24.9384 },
+          radiusMeters: 250,
+        }}
+        showUserLocation
+      />
+    );
+
+    expect(getByTestId('map-query-radius-circle').props.radius).toBe(250);
     expect(getByTestId('map-detached-center-marker')).toBeTruthy();
   });
 });

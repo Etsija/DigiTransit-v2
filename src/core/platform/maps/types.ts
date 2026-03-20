@@ -12,6 +12,15 @@ export type PlatformMapCamera = {
   longitudeDelta?: number;
 };
 
+export type PlatformMapRadiusCircle = {
+  center: PlatformMapCoordinates;
+  radiusMeters: number;
+};
+
+export type PlatformMapUserInteraction = {
+  kind: 'pan';
+};
+
 export type PlatformMapMarker = {
   id: string;
   stopId?: string;
@@ -30,10 +39,11 @@ export type PlatformMapViewProps = {
   showUserLocation: boolean;
   camera?: PlatformMapCamera;
   liveLocationCoordinates?: PlatformMapCoordinates | null;
+  queryRadiusCircle?: PlatformMapRadiusCircle | null;
   mode?: 'live' | 'detached';
   recenterRequestKey?: number;
   markers?: PlatformMapMarker[];
   onMapReady?: () => void;
-  onUserInteractionStart?: () => void;
+  onUserInteractionStart?: (interaction: PlatformMapUserInteraction) => void;
   onUserCenterChange?: (coordinates: PlatformMapCoordinates) => void;
 };
