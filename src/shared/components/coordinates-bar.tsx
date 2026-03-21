@@ -55,16 +55,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   overlayBase: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.colors.card.bg,
   },
   overlayTop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.colors.card.gradientTop,
     opacity: 0.28,
   },
   overlayBottom: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     top: '40%',
     backgroundColor: theme.colors.card.gradientBottom,
     opacity: 0.42,

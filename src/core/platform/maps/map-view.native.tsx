@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.status.realtime,
   },
   centerTarget: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
   },

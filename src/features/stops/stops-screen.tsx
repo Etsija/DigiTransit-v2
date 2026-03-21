@@ -263,15 +263,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: theme.glass.screenBackdropOpacity,
   },
   backdropScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.glass.screenBackdropScrim,
   },
   backdropTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.glass.screenBackdropTint,
   },
   safeArea: {

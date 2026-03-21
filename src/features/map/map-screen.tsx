@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   safeArea: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   overlay: {
     flex: 1,
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   recenterOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.colors.card.bg,
   },
   queryButton: {
