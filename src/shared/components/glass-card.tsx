@@ -45,16 +45,16 @@ const styles = StyleSheet.create({
     minHeight: theme.layout.minTouchTarget,
   },
   overlayBase: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.colors.card.bg,
   },
   overlayTop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.colors.card.gradientTop,
     opacity: 0.35,
   },
   overlayBottom: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     top: '45%',
     backgroundColor: theme.colors.card.gradientBottom,
     opacity: 0.5,

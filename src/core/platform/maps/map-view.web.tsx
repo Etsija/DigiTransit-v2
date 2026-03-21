@@ -1,4 +1,4 @@
-import mapboxgl, { type MapboxOptions } from 'mapbox-gl';
+import mapboxgl, { type MapOptions } from 'mapbox-gl';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -30,11 +30,11 @@ export function buildMapboxOptions({
   container,
   latitude,
   longitude,
-}: BuildMapboxOptionsInput): MapboxOptions {
+}: BuildMapboxOptionsInput): MapOptions {
   return {
     attributionControl: false,
     center: [longitude, latitude],
-    container: container as MapboxOptions['container'],
+    container: container as MapOptions['container'],
     pitchWithRotate: false,
     style: MAPBOX_DARK_STYLE_URL,
     zoom: 14,
@@ -222,7 +222,7 @@ export function syncQueryRadiusCircle(
 
 export function bindMapboxUserCenterChanges(
   map: mapboxgl.Map,
-  interactionRef: React.MutableRefObject<boolean>,
+  interactionRef: React.RefObject<boolean>,
   onUserInteractionStart?: (interaction: PlatformMapUserInteraction) => void,
   onUserCenterChange?: (coordinates: PlatformMapCoordinates) => void
 ) {
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#08121D',
   },
   centerTarget: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
   },

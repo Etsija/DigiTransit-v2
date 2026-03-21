@@ -121,7 +121,7 @@ export function StopCard({
           locations={[0, 0.55, 1]}
           start={{ x: 0.04, y: 0.08 }}
           end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         <View className='flex-row items-center gap-2'>

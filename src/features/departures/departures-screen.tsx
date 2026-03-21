@@ -572,15 +572,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: theme.glass.screenBackdropOpacity,
   },
   backdropScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.glass.screenBackdropScrim,
   },
   backdropTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: theme.glass.screenBackdropTint,
   },
   safeArea: {
@@ -687,11 +687,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   dialogOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
   },
   dialogBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.42)',
   },
   dialogSheet: {
