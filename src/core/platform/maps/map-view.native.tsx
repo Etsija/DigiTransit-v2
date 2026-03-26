@@ -75,6 +75,30 @@ export function PlatformMapView({
   const lastRecenterRequestKeyRef = useRef(recenterRequestKey);
   const suppressNextRegionChangeRef = useRef(false);
   const [tracksViewChanges, setTracksViewChanges] = React.useState(markers.length > 0);
+  const liveFollowLatRef = useRef(latitude);
+  const liveFollowLonRef = useRef(longitude);
+
+  useEffect(() => {
+    if (mode !== 'live') {
+      liveFollowLatRef.current = latitude;
+      liveFollowLonRef.current = longitude;
+      return;
+    }
+
+    if (latitude === liveFollowLatRef.current && longitude === liveFollowLonRef.current) {
+      return;
+    }
+
+    // Don't fight an in-progress pan gesture.
+    if (isUserInteractingRef.current) {
+      return;
+    }
+
+    liveFollowLatRef.current = latitude;
+    liveFollowLonRef.current = longitude;
+    suppressNextRegionChangeRef.current = true;
+    mapRef.current?.animateToRegion(buildRegion(latitude, longitude), 500);
+  }, [latitude, longitude, mode]);
 
   useEffect(() => {
     const isExplicitRecenter = recenterRequestKey !== lastRecenterRequestKeyRef.current;
