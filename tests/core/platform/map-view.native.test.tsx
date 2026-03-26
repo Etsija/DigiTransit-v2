@@ -67,7 +67,21 @@ describe('PlatformMapView native', () => {
     expect(getByTestId('map-live-location-marker')).toBeTruthy();
   });
 
-  it('does not imperatively recenter when only center props change without an explicit camera request', () => {
+  it('does not imperatively recenter when center props change in detached mode', () => {
+    const { rerender } = render(
+      <PlatformMapView latitude={60.1699} longitude={24.9384} mode='detached' showUserLocation />
+    );
+
+    mockAnimateToRegion.mockClear();
+
+    rerender(
+      <PlatformMapView latitude={60.1711} longitude={24.9412} mode='detached' showUserLocation />
+    );
+
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+  });
+
+  it('animates to follow GPS position updates in live mode', () => {
     const { rerender } = render(
       <PlatformMapView latitude={60.1699} longitude={24.9384} showUserLocation />
     );
@@ -76,7 +90,49 @@ describe('PlatformMapView native', () => {
 
     rerender(<PlatformMapView latitude={60.1711} longitude={24.9412} showUserLocation />);
 
-    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+    expect(mockAnimateToRegion).toHaveBeenCalledWith(
+      expect.objectContaining({ latitude: 60.1711, longitude: 24.9412 }),
+      500
+    );
+  });
+
+  it('suppresses the region-change callback after a live-follow animation so it is not treated as a user gesture', () => {
+    const onUserCenterChange = jest.fn();
+    const onUserInteractionStart = jest.fn();
+    const { getByTestId, rerender } = render(
+      <PlatformMapView
+        latitude={60.1699}
+        longitude={24.9384}
+        onUserCenterChange={onUserCenterChange}
+        onUserInteractionStart={onUserInteractionStart}
+        showUserLocation
+      />
+    );
+
+    rerender(
+      <PlatformMapView
+        latitude={60.1711}
+        longitude={24.9412}
+        onUserCenterChange={onUserCenterChange}
+        onUserInteractionStart={onUserInteractionStart}
+        showUserLocation
+      />
+    );
+
+    fireEvent(
+      getByTestId('live-map-surface'),
+      'onRegionChangeComplete',
+      {
+        latitude: 60.1711,
+        longitude: 24.9412,
+        latitudeDelta: MAP_REGION_DELTA.latitudeDelta,
+        longitudeDelta: MAP_REGION_DELTA.longitudeDelta,
+      },
+      { isGesture: false }
+    );
+
+    expect(onUserInteractionStart).not.toHaveBeenCalled();
+    expect(onUserCenterChange).not.toHaveBeenCalled();
   });
 
   it('recentres imperatively again when the recenter request changes without coordinate changes', () => {

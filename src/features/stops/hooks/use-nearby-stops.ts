@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { requestGraphql } from '@/core/api/graphql-client';
 import { queryKeys } from '@/core/api/query-keys';
@@ -142,6 +142,7 @@ export function useNearbyStops({ coordinates, enabled = true }: UseNearbyStopsOp
         radius: searchRadiusMeters,
       }),
     enabled: enabled && hasCoordinates,
+    placeholderData: keepPreviousData,
     refetchInterval: stopsPollingIntervalSeconds * 1000,
     select: normalizeNearbyStops,
   });
