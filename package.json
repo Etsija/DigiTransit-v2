@@ -2,6 +2,7 @@
   "name": "digitransit-v2",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "license": "MIT",
   "scripts": {
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
